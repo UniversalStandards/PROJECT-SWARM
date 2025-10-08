@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
-import { Link } from 'wouter';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { Link, useLocation } from 'wouter';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,9 +15,14 @@ import {
   LayoutTemplate
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 import type { Workflow, Execution, Template } from '@shared/schema';
 
 export default function Dashboard() {
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+
   const { data: workflows, isLoading: workflowsLoading } = useQuery<Workflow[]>({
     queryKey: ['/api/workflows'],
   });
@@ -28,6 +33,28 @@ export default function Dashboard() {
 
   const { data: templates, isLoading: templatesLoading } = useQuery<Template[]>({
     queryKey: ['/api/templates'],
+  });
+
+  const createFromTemplateMutation = useMutation({
+    mutationFn: async (templateId: string) => {
+      const res = await apiRequest('POST', `/api/templates/${templateId}/create-workflow`, {});
+      return await res.json();
+    },
+    onSuccess: (workflow: Workflow) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/workflows'] });
+      toast({
+        title: "Workflow Created",
+        description: `Created "${workflow.name}" from template`,
+      });
+      setLocation(`/workflow-builder/${workflow.id}`);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to create workflow from template",
+        variant: "destructive",
+      });
+    },
   });
 
   const stats = [
@@ -218,7 +245,13 @@ export default function Dashboard() {
                             {template.description || 'No description'}
                           </CardDescription>
                         </div>
-                        <Button variant="outline" size="sm" data-testid={`button-use-template-${template.id}`}>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => createFromTemplateMutation.mutate(template.id)}
+                          disabled={createFromTemplateMutation.isPending}
+                          data-testid={`button-use-template-${template.id}`}
+                        >
                           Use Template
                         </Button>
                       </div>

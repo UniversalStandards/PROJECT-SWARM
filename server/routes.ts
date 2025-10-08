@@ -309,4 +309,35 @@ export function registerRoutes(app: Express) {
       res.status(500).json({ error: error.message });
     }
   });
+
+  // Create workflow from template
+  app.post("/api/templates/:id/create-workflow", async (req, res) => {
+    try {
+      const user = await getDemoUser();
+      const template = await storage.getTemplateById(req.params.id);
+      
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+
+      // Create workflow from template
+      const workflowData = insertWorkflowSchema.parse({
+        userId: user.id,
+        name: `${template.name} (Copy)`,
+        description: template.description,
+        nodes: template.nodes,
+        edges: template.edges,
+        category: template.category,
+      });
+
+      const workflow = await storage.createWorkflow(workflowData);
+      
+      // Increment template usage count
+      await storage.updateTemplateUsageCount(req.params.id);
+
+      res.json(workflow);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 }
