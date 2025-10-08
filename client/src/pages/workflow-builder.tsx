@@ -33,9 +33,10 @@ import {
 import { AgentNode } from '@/components/workflow/agent-node';
 import { AgentConfigPanel } from '@/components/workflow/agent-config-panel';
 import { useToast } from '@/hooks/use-toast';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useParams, useLocation } from 'wouter';
+import type { Workflow } from '@shared/schema';
 
 const nodeTypes = {
   agent: AgentNode,
@@ -51,8 +52,29 @@ export default function WorkflowBuilder() {
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [workflowName, setWorkflowName] = useState('Untitled Workflow');
+  const [workflowDescription, setWorkflowDescription] = useState('');
   const [workflowId, setWorkflowId] = useState<string | null>(params.id || null);
   const { toast } = useToast();
+
+  // Fetch existing workflow if ID is provided
+  const { data: workflow, isLoading } = useQuery<Workflow>({
+    queryKey: ['/api/workflows', workflowId],
+    enabled: !!workflowId,
+  });
+
+  // Load workflow data when it's fetched
+  useEffect(() => {
+    if (workflow) {
+      setWorkflowName(workflow.name);
+      setWorkflowDescription(workflow.description || '');
+      if (workflow.nodes && Array.isArray(workflow.nodes)) {
+        setNodes(workflow.nodes as Node[]);
+      }
+      if (workflow.edges && Array.isArray(workflow.edges)) {
+        setEdges(workflow.edges as Edge[]);
+      }
+    }
+  }, [workflow]);
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)),
@@ -99,7 +121,7 @@ export default function WorkflowBuilder() {
   };
 
   const saveMutation = useMutation({
-    mutationFn: async (data: { name: string; nodes: Node[]; edges: Edge[] }) => {
+    mutationFn: async (data: { name: string; description?: string; nodes: Node[]; edges: Edge[] }) => {
       if (workflowId) {
         const res = await apiRequest('PATCH', `/api/workflows/${workflowId}`, data);
         return await res.json();
@@ -131,6 +153,7 @@ export default function WorkflowBuilder() {
   const saveWorkflow = async () => {
     saveMutation.mutate({
       name: workflowName,
+      description: workflowDescription,
       nodes,
       edges,
     });
