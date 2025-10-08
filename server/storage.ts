@@ -1,6 +1,7 @@
 import type {
   User,
   InsertUser,
+  UpsertUser,
   Workflow,
   InsertWorkflow,
   Agent,
@@ -30,10 +31,12 @@ import {
 import { eq, desc, and } from "drizzle-orm";
 
 export interface IStorage {
-  // Users
+  // Users (Replit Auth)
+  getUser(id: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
+  // Legacy user methods (for backward compatibility)
   createUser(user: InsertUser): Promise<User>;
   getUserById(id: string): Promise<User | undefined>;
-  getUserByReplitId(replitId: string): Promise<User | undefined>;
   
   // Workflows
   createWorkflow(workflow: InsertWorkflow): Promise<Workflow>;
@@ -79,7 +82,28 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  // Users
+  // Users (Replit Auth)
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
+  }
+
+  // Legacy user methods (for backward compatibility)
   async createUser(user: InsertUser): Promise<User> {
     const [newUser] = await db.insert(users).values(user).returning();
     return newUser;
@@ -87,11 +111,6 @@ export class DatabaseStorage implements IStorage {
 
   async getUserById(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
-  }
-
-  async getUserByReplitId(replitId: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.replitId, replitId));
     return user;
   }
 

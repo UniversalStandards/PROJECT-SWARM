@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { AgentNode } from '@/components/workflow/agent-node';
 import { AgentConfigPanel } from '@/components/workflow/agent-config-panel';
+import { ExecutionInputDialog } from '@/components/workflow/execution-input-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
@@ -54,6 +55,7 @@ export default function WorkflowBuilder() {
   const [workflowName, setWorkflowName] = useState('Untitled Workflow');
   const [workflowDescription, setWorkflowDescription] = useState('');
   const [workflowId, setWorkflowId] = useState<string | null>(params.id || null);
+  const [showExecutionDialog, setShowExecutionDialog] = useState(false);
   const { toast } = useToast();
 
   // Fetch existing workflow if ID is provided
@@ -186,7 +188,7 @@ export default function WorkflowBuilder() {
     },
   });
 
-  const executeWorkflow = async () => {
+  const handleExecuteClick = () => {
     if (!workflowId) {
       toast({
         title: "Save Required",
@@ -195,10 +197,12 @@ export default function WorkflowBuilder() {
       });
       return;
     }
-    
-    // For now, use a simple prompt as input
-    const input = "Process this workflow";
+    setShowExecutionDialog(true);
+  };
+
+  const executeWorkflow = (input: string) => {
     executeWorkflowMutation.mutate(input);
+    setShowExecutionDialog(false);
   };
 
   return (
@@ -219,7 +223,7 @@ export default function WorkflowBuilder() {
             <Save className="w-4 h-4 mr-2" />
             Save
           </Button>
-          <Button size="sm" onClick={executeWorkflow} data-testid="button-execute-workflow">
+          <Button size="sm" onClick={handleExecuteClick} data-testid="button-execute-workflow">
             <Play className="w-4 h-4 mr-2" />
             Execute
           </Button>
@@ -322,6 +326,13 @@ export default function WorkflowBuilder() {
             onUpdate={(data) => updateNodeData(selectedNode.id, data)}
           />
         )}
+
+        <ExecutionInputDialog
+          open={showExecutionDialog}
+          onClose={() => setShowExecutionDialog(false)}
+          onExecute={executeWorkflow}
+          isExecuting={executeWorkflowMutation.isPending}
+        />
       </div>
     </div>
   );

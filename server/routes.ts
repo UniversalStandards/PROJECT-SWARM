@@ -3,25 +3,49 @@ import { storage } from "./storage";
 import { insertWorkflowSchema, insertAgentSchema, insertExecutionSchema, insertTemplateSchema } from "@shared/schema";
 import { orchestrator } from "./ai/orchestrator";
 import { z } from "zod";
+import { setupAuth, isAuthenticated } from "./replitAuth";
+import type { Request } from "express";
 
 // Execution request schema - only workflowId and input are needed from client
 const executeWorkflowSchema = insertExecutionSchema.pick({ workflowId: true, input: true });
 
 // Get the demo user from the database, or create one if not exists
 async function getDemoUser() {
-  const users = await storage.getUserByReplitId('mock-user-id');
-  if (users) return users;
+  // For demo purposes - create a test user
+  const demoUser = await storage.getUser('demo-user-123');
+  if (demoUser) return demoUser;
   
   // Create demo user if not exists
-  return await storage.createUser({
-    replitId: 'mock-user-id',
-    username: 'Demo User',
+  return await storage.upsertUser({
+    id: 'demo-user-123',
     email: 'demo@sawrm.ai',
-    avatarUrl: null,
+    firstName: 'Demo',
+    lastName: 'User',
+    profileImageUrl: null,
   });
 }
 
-export function registerRoutes(app: Express) {
+// Helper to get current user (auth or demo)
+function getCurrentUser(req: Request): string | null {
+  const authUser = (req.user as any)?.claims?.sub;
+  return authUser || null;
+}
+
+export async function registerRoutes(app: Express) {
+  // Setup Replit Auth
+  await setupAuth(app);
+
+  // Auth routes
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
   // Workflows
   app.get("/api/workflows", async (req, res) => {
     try {

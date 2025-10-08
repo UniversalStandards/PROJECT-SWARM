@@ -1,15 +1,32 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, jsonb, integer, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, jsonb, integer, boolean, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Session storage table for Replit Auth
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)],
+);
+
+// User storage table - updated for Replit Auth
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  replitId: text("replit_id").unique(),
-  username: text("username").notNull(),
-  email: text("email"),
-  avatarUrl: text("avatar_url"),
+  email: varchar("email").unique(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  profileImageUrl: varchar("profile_image_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  // Legacy fields for backward compatibility (deprecated)
+  replitId: text("replit_id").unique(),
+  username: text("username"),
+  avatarUrl: text("avatar_url"),
 });
 
 export const workflows = pgTable("workflows", {
@@ -109,6 +126,7 @@ export const insertAssistantChatSchema = createInsertSchema(assistantChats).omit
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+export type UpsertUser = typeof users.$inferInsert;
 
 export type InsertWorkflow = z.infer<typeof insertWorkflowSchema>;
 export type Workflow = typeof workflows.$inferSelect;
