@@ -159,11 +159,46 @@ export default function WorkflowBuilder() {
     });
   };
 
+  const executeWorkflowMutation = useMutation({
+    mutationFn: async (input: string) => {
+      if (!workflowId) throw new Error("No workflow ID");
+      const res = await apiRequest('POST', '/api/executions', {
+        workflowId,
+        input,
+      });
+      return await res.json();
+    },
+    onSuccess: (execution) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/executions'] });
+      toast({
+        title: "Execution Started",
+        description: "Your agent swarm is now running.",
+      });
+      // Navigate to execution monitor
+      setLocation(`/executions/${execution.id}`);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Execution Failed",
+        description: error.message || "Failed to execute workflow",
+        variant: "destructive",
+      });
+    },
+  });
+
   const executeWorkflow = async () => {
-    toast({
-      title: "Execution Started",
-      description: "Your agent swarm is now running.",
-    });
+    if (!workflowId) {
+      toast({
+        title: "Save Required",
+        description: "Please save the workflow before executing.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // For now, use a simple prompt as input
+    const input = "Process this workflow";
+    executeWorkflowMutation.mutate(input);
   };
 
   return (

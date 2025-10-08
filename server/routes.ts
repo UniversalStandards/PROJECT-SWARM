@@ -4,6 +4,9 @@ import { insertWorkflowSchema, insertAgentSchema, insertExecutionSchema, insertT
 import { orchestrator } from "./ai/orchestrator";
 import { z } from "zod";
 
+// Execution request schema - only workflowId and input are needed from client
+const executeWorkflowSchema = insertExecutionSchema.pick({ workflowId: true, input: true });
+
 // Get the demo user from the database, or create one if not exists
 async function getDemoUser() {
   const users = await storage.getUserByReplitId('mock-user-id');
@@ -206,11 +209,14 @@ export function registerRoutes(app: Express) {
 
   app.post("/api/executions", async (req, res) => {
     try {
-      const { workflowId, input } = req.body;
+      const { workflowId, input } = executeWorkflowSchema.parse(req.body);
       const execution = await orchestrator.executeWorkflow(workflowId, input);
       res.json(execution);
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      res.status(500).json({ error: error.message });
     }
   });
 
