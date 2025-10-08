@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
-import { GenAI } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
 import type { Agent } from '@shared/schema';
 
 interface ExecutionContext {
@@ -19,7 +19,7 @@ interface ExecutionResult {
 export class AIExecutor {
   private openai: OpenAI;
   private anthropic: Anthropic;
-  private gemini: GenAI;
+  private gemini: GoogleGenAI;
 
   constructor() {
     this.openai = new OpenAI({
@@ -30,7 +30,7 @@ export class AIExecutor {
       apiKey: process.env.ANTHROPIC_API_KEY,
     });
 
-    this.gemini = new GenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+    this.gemini = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
   }
 
   async executeAgent(agent: Agent, context: ExecutionContext): Promise<ExecutionResult> {

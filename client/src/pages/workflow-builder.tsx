@@ -33,6 +33,9 @@ import {
 import { AgentNode } from '@/components/workflow/agent-node';
 import { AgentConfigPanel } from '@/components/workflow/agent-config-panel';
 import { useToast } from '@/hooks/use-toast';
+import { useMutation } from '@tanstack/react-query';
+import { apiRequest, queryClient } from '@/lib/queryClient';
+import { useParams, useLocation } from 'wouter';
 
 const nodeTypes = {
   agent: AgentNode,
@@ -42,10 +45,13 @@ const initialNodes: Node[] = [];
 const initialEdges: Edge[] = [];
 
 export default function WorkflowBuilder() {
+  const params = useParams();
+  const [, setLocation] = useLocation();
   const [nodes, setNodes] = useState<Node[]>(initialNodes);
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [workflowName, setWorkflowName] = useState('Untitled Workflow');
+  const [workflowId, setWorkflowId] = useState<string | null>(params.id || null);
   const { toast } = useToast();
 
   const onNodesChange = useCallback(
@@ -92,25 +98,42 @@ export default function WorkflowBuilder() {
     );
   };
 
-  const saveWorkflow = async () => {
-    try {
-      const workflowData = {
-        name: workflowName,
-        nodes,
-        edges,
-      };
-      
+  const saveMutation = useMutation({
+    mutationFn: async (data: { name: string; nodes: Node[]; edges: Edge[] }) => {
+      if (workflowId) {
+        const res = await apiRequest('PATCH', `/api/workflows/${workflowId}`, data);
+        return await res.json();
+      } else {
+        const res = await apiRequest('POST', '/api/workflows', data);
+        return await res.json();
+      }
+    },
+    onSuccess: (data: any) => {
+      if (!workflowId) {
+        setWorkflowId(data.id);
+        setLocation(`/workflow-builder/${data.id}`);
+      }
+      queryClient.invalidateQueries({ queryKey: ['/api/workflows'] });
       toast({
         title: "Workflow Saved",
         description: "Your workflow has been saved successfully.",
       });
-    } catch (error) {
+    },
+    onError: () => {
       toast({
         title: "Error",
         description: "Failed to save workflow.",
         variant: "destructive",
       });
-    }
+    },
+  });
+
+  const saveWorkflow = async () => {
+    saveMutation.mutate({
+      name: workflowName,
+      nodes,
+      edges,
+    });
   };
 
   const executeWorkflow = async () => {
