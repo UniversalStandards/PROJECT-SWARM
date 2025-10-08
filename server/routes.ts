@@ -11,11 +11,7 @@ const executeWorkflowSchema = insertExecutionSchema.pick({ workflowId: true, inp
 
 // Get the demo user from the database, or create one if not exists
 async function getDemoUser() {
-  // For demo purposes - create a test user
-  const demoUser = await storage.getUser('demo-user-123');
-  if (demoUser) return demoUser;
-  
-  // Create demo user if not exists
+  // Upsert demo user (will create or update)
   return await storage.upsertUser({
     id: 'demo-user-123',
     email: 'demo@sawrm.ai',
