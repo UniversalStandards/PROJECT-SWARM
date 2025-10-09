@@ -1,13 +1,14 @@
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import { GoogleGenAI } from '@google/genai';
-import type { Agent } from '@shared/schema';
+import type { Agent, KnowledgeEntry } from '@shared/schema';
 
 interface ExecutionContext {
   agentId: string;
   messages: Array<{ role: string; content: string }>;
   temperature: number;
   maxTokens: number;
+  knowledgeContext?: KnowledgeEntry[];
 }
 
 interface ExecutionResult {
@@ -54,6 +55,30 @@ export class AIExecutor {
     }
   }
 
+  private formatKnowledgeContext(knowledge: KnowledgeEntry[]): string {
+    if (!knowledge || knowledge.length === 0) return '';
+
+    const knowledgeText = knowledge
+      .map((entry, idx) => {
+        const context = entry.context ? ` (${entry.context})` : '';
+        return `${idx + 1}. [${entry.category}] ${entry.content}${context}`;
+      })
+      .join('\n');
+
+    return `\n\n--- Accumulated Knowledge Base ---\nThe following knowledge has been accumulated from previous executions. Use this to inform your responses:\n\n${knowledgeText}\n\n--- End Knowledge Base ---\n`;
+  }
+
+  private buildSystemPromptWithKnowledge(basePrompt: string | undefined, knowledge: KnowledgeEntry[]): string {
+    const knowledgeContext = this.formatKnowledgeContext(knowledge);
+    const systemPrompt = basePrompt || 'You are a helpful AI agent in a workflow orchestration system.';
+    
+    if (knowledgeContext) {
+      return systemPrompt + knowledgeContext;
+    }
+    
+    return systemPrompt;
+  }
+
   private mapProviderError(error: any, provider: string): string {
     if (error.code === 'insufficient_quota') {
       return 'API quota exceeded. Please check your billing settings.';
@@ -73,9 +98,12 @@ export class AIExecutor {
   private async executeOpenAI(agent: Agent, context: ExecutionContext): Promise<ExecutionResult> {
     const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [];
     
-    if (agent.systemPrompt) {
-      messages.push({ role: 'system', content: agent.systemPrompt });
-    }
+    const enhancedSystemPrompt = this.buildSystemPromptWithKnowledge(
+      agent.systemPrompt,
+      context.knowledgeContext || []
+    );
+    
+    messages.push({ role: 'system', content: enhancedSystemPrompt });
 
     messages.push(...context.messages.map(msg => ({
       role: msg.role as 'system' | 'user' | 'assistant',
@@ -104,11 +132,16 @@ export class AIExecutor {
       content: msg.content,
     }));
 
+    const enhancedSystemPrompt = this.buildSystemPromptWithKnowledge(
+      agent.systemPrompt,
+      context.knowledgeContext || []
+    );
+
     const response = await this.anthropic.messages.create({
       model: agent.model,
       max_tokens: context.maxTokens,
       temperature: context.temperature / 100,
-      system: agent.systemPrompt || undefined,
+      system: enhancedSystemPrompt,
       messages,
     });
 
@@ -123,9 +156,14 @@ export class AIExecutor {
   }
 
   private async executeGemini(agent: Agent, context: ExecutionContext): Promise<ExecutionResult> {
+    const enhancedSystemPrompt = this.buildSystemPromptWithKnowledge(
+      agent.systemPrompt,
+      context.knowledgeContext || []
+    );
+
     const model = this.gemini.getGenerativeModel({ 
       model: agent.model,
-      systemInstruction: agent.systemPrompt || undefined,
+      systemInstruction: enhancedSystemPrompt,
     });
 
     const chat = model.startChat({
