@@ -16,6 +16,8 @@ import type {
   InsertTemplate,
   AssistantChat,
   InsertAssistantChat,
+  KnowledgeEntry,
+  InsertKnowledgeEntry,
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -26,9 +28,10 @@ import {
   agentMessages, 
   executionLogs, 
   templates,
-  assistantChats 
+  assistantChats,
+  knowledgeEntries 
 } from "@shared/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, or } from "drizzle-orm";
 
 export interface IStorage {
   // Users (Replit Auth)
@@ -79,6 +82,13 @@ export interface IStorage {
   getAssistantChatById(id: string): Promise<AssistantChat | undefined>;
   getAssistantChatsByUserId(userId: string): Promise<AssistantChat[]>;
   updateAssistantChat(id: string, chat: Partial<InsertAssistantChat>): Promise<AssistantChat | undefined>;
+  
+  // Knowledge Base
+  createKnowledgeEntry(entry: InsertKnowledgeEntry): Promise<KnowledgeEntry>;
+  getKnowledgeByUserId(userId: string): Promise<KnowledgeEntry[]>;
+  getKnowledgeByAgentType(userId: string, agentType: string): Promise<KnowledgeEntry[]>;
+  getKnowledgeByCategory(userId: string, category: string): Promise<KnowledgeEntry[]>;
+  getRelevantKnowledge(userId: string, agentType: string, categories: string[]): Promise<KnowledgeEntry[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -294,6 +304,70 @@ export class DatabaseStorage implements IStorage {
       .where(eq(assistantChats.id, id))
       .returning();
     return updated;
+  }
+
+  // Knowledge Base
+  async createKnowledgeEntry(entry: InsertKnowledgeEntry): Promise<KnowledgeEntry> {
+    const [newEntry] = await db.insert(knowledgeEntries).values(entry).returning();
+    return newEntry;
+  }
+
+  async getKnowledgeByUserId(userId: string): Promise<KnowledgeEntry[]> {
+    return await db
+      .select()
+      .from(knowledgeEntries)
+      .where(eq(knowledgeEntries.userId, userId))
+      .orderBy(desc(knowledgeEntries.createdAt));
+  }
+
+  async getKnowledgeByAgentType(userId: string, agentType: string): Promise<KnowledgeEntry[]> {
+    return await db
+      .select()
+      .from(knowledgeEntries)
+      .where(
+        and(
+          eq(knowledgeEntries.userId, userId),
+          eq(knowledgeEntries.agentType, agentType)
+        )
+      )
+      .orderBy(desc(knowledgeEntries.confidence), desc(knowledgeEntries.createdAt));
+  }
+
+  async getKnowledgeByCategory(userId: string, category: string): Promise<KnowledgeEntry[]> {
+    return await db
+      .select()
+      .from(knowledgeEntries)
+      .where(
+        and(
+          eq(knowledgeEntries.userId, userId),
+          eq(knowledgeEntries.category, category)
+        )
+      )
+      .orderBy(desc(knowledgeEntries.confidence), desc(knowledgeEntries.createdAt));
+  }
+
+  async getRelevantKnowledge(userId: string, agentType: string, categories: string[]): Promise<KnowledgeEntry[]> {
+    // Get knowledge that matches either:
+    // 1. The specific agent type (specialist knowledge)
+    // 2. 'general' agent type (shared knowledge for all)
+    // AND matches one of the requested categories
+    const categoryConditions = categories.map(cat => eq(knowledgeEntries.category, cat));
+    
+    return await db
+      .select()
+      .from(knowledgeEntries)
+      .where(
+        and(
+          eq(knowledgeEntries.userId, userId),
+          or(
+            eq(knowledgeEntries.agentType, agentType),
+            eq(knowledgeEntries.agentType, 'general')
+          ),
+          or(...categoryConditions)
+        )
+      )
+      .orderBy(desc(knowledgeEntries.confidence), desc(knowledgeEntries.createdAt))
+      .limit(50); // Limit to top 50 most relevant knowledge entries
   }
 }
 
