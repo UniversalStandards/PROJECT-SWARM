@@ -55,6 +55,24 @@ export class WorkflowOrchestrator {
           agent.id
         );
 
+        // Fetch relevant knowledge for this agent
+        const agentType = agent.role.toLowerCase();
+        const categories = this.getCategoriesForAgent(agentType);
+        const relevantKnowledge = await storage.getRelevantKnowledge(
+          workflow.userId,
+          agentType,
+          categories
+        );
+
+        if (relevantKnowledge.length > 0) {
+          await this.logExecution(
+            execution.id,
+            'info',
+            `Retrieved ${relevantKnowledge.length} knowledge entries for agent`,
+            agent.id
+          );
+        }
+
         const predecessorEdges = edges.filter(e => e.target === nodeId);
         const contextMessages: Array<{ role: string; content: string }> = [];
 
@@ -80,6 +98,7 @@ export class WorkflowOrchestrator {
           messages: contextMessages,
           temperature: agent.temperature || 70,
           maxTokens: agent.maxTokens || 1000,
+          knowledgeContext: relevantKnowledge,
         });
 
         await storage.createAgentMessage({
@@ -89,6 +108,14 @@ export class WorkflowOrchestrator {
           content: result.content,
           tokenCount: result.tokenCount,
         });
+
+        // Extract and store new knowledge from agent response
+        await this.extractAndStoreKnowledge(
+          workflow.userId,
+          agent,
+          result.content,
+          execution.id
+        );
 
         nodeResults.set(nodeId, result);
 
@@ -131,6 +158,122 @@ export class WorkflowOrchestrator {
 
       throw error;
     }
+  }
+
+  private getCategoriesForAgent(agentType: string): string[] {
+    // Map agent types to relevant knowledge categories
+    const categoryMap: Record<string, string[]> = {
+      coordinator: ['general', 'workflow', 'coordination', 'planning'],
+      coder: ['general', 'coding', 'programming', 'algorithms', 'debugging'],
+      researcher: ['general', 'research', 'analysis', 'data', 'insights'],
+      database: ['general', 'database', 'sql', 'data-modeling'],
+      security: ['general', 'security', 'authentication', 'encryption'],
+      custom: ['general', 'custom'],
+    };
+
+    return categoryMap[agentType] || ['general'];
+  }
+
+  private async extractAndStoreKnowledge(
+    userId: string,
+    agent: Agent,
+    response: string,
+    executionId: string
+  ): Promise<void> {
+    try {
+      // Extract key learnings from the response
+      const learnings = this.extractLearnings(response);
+      
+      if (learnings.length === 0) return;
+
+      const agentType = agent.role.toLowerCase();
+      
+      for (const learning of learnings) {
+        await storage.createKnowledgeEntry({
+          userId,
+          agentType,
+          category: learning.category,
+          content: learning.content,
+          context: learning.context,
+          sourceExecutionId: executionId,
+          sourceAgentId: agent.id,
+          confidence: learning.confidence || 80,
+        });
+      }
+
+      await this.logExecution(
+        executionId,
+        'info',
+        `Stored ${learnings.length} new knowledge entries`,
+        agent.id
+      );
+    } catch (error: any) {
+      console.error('Failed to extract and store knowledge:', error);
+      // Don't fail the workflow if knowledge extraction fails
+    }
+  }
+
+  private extractLearnings(response: string): Array<{
+    category: string;
+    content: string;
+    context?: string;
+    confidence?: number;
+  }> {
+    const learnings: Array<{
+      category: string;
+      content: string;
+      context?: string;
+      confidence?: number;
+    }> = [];
+
+    // Pattern 1: Look for explicit learning markers
+    const learningPatterns = [
+      /(?:learned|discovered|found|realized):\s*(.+?)(?:\n|$)/gi,
+      /(?:key insight|important):\s*(.+?)(?:\n|$)/gi,
+      /(?:best practice|tip|recommendation):\s*(.+?)(?:\n|$)/gi,
+    ];
+
+    for (const pattern of learningPatterns) {
+      const matches = response.matchAll(pattern);
+      for (const match of matches) {
+        if (match[1] && match[1].length > 10) {
+          learnings.push({
+            category: 'general',
+            content: match[1].trim(),
+            confidence: 75,
+          });
+        }
+      }
+    }
+
+    // Pattern 2: Extract code snippets as coding knowledge
+    const codePattern = /```[\w]*\n([\s\S]+?)```/g;
+    const codeMatches = response.matchAll(codePattern);
+    for (const match of codeMatches) {
+      if (match[1] && match[1].length > 20) {
+        learnings.push({
+          category: 'coding',
+          content: match[1].trim(),
+          context: 'Code example from execution',
+          confidence: 85,
+        });
+      }
+    }
+
+    // Pattern 3: Extract important conclusions or summaries
+    const conclusionPattern = /(?:in conclusion|summary|to summarize|overall):\s*(.+?)(?:\n\n|$)/gis;
+    const conclusionMatches = response.matchAll(conclusionPattern);
+    for (const match of conclusionMatches) {
+      if (match[1] && match[1].length > 20) {
+        learnings.push({
+          category: 'general',
+          content: match[1].trim(),
+          confidence: 80,
+        });
+      }
+    }
+
+    return learnings;
   }
 
   private topologicalSort(nodes: WorkflowNode[], edges: WorkflowEdge[]): string[] {
