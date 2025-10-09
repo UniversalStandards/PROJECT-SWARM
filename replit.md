@@ -11,6 +11,14 @@ SAWRM (AI Agent Swarm Orchestrator) is an enterprise-grade visual workflow platf
 - **Enterprise-Ready**: Built with PostgreSQL, TypeScript, and modern web technologies
 
 ## Recent Changes
+- **2024-10-09**: Persistent Knowledge Base System
+  - Implemented persistent shared knowledge base for agent swarms
+  - Knowledge automatically extracted from agent responses and stored
+  - Agents retrieve and leverage accumulated knowledge in subsequent executions
+  - Composite index for efficient knowledge queries
+  - Support for all AI providers (OpenAI, Anthropic, Gemini)
+  - End-to-end tested and validated
+
 - **2024-10-08**: Initial MVP implementation complete
   - Database schema designed and deployed
   - Workflow builder with React Flow integration
@@ -50,6 +58,7 @@ SAWRM (AI Agent Swarm Orchestrator) is an enterprise-grade visual workflow platf
 - `execution_logs`: Detailed execution logging
 - `templates`: Pre-built workflow templates
 - `assistant_chats`: AI assistant conversation history
+- `knowledge_entries`: Persistent shared knowledge base with composite index (userId, agentType, category, confidence)
 
 ### Key Features
 
@@ -75,12 +84,32 @@ SAWRM (AI Agent Swarm Orchestrator) is an enterprise-grade visual workflow platf
 **Orchestrator** (`server/ai/orchestrator.ts`):
 - Topological sort for workflow execution order
 - Agent coordination and message passing
+- Knowledge fetching before agent execution and storage after
 - Execution logging and error handling
 
 **Executor** (`server/ai/executor.ts`):
 - Provider-agnostic AI execution
-- OpenAI, Anthropic, and Gemini support
+- OpenAI, Anthropic, and Gemini support with model fallbacks
+- Knowledge injection into system prompts
 - Token tracking and response handling
+
+#### 5. Persistent Knowledge Base
+**Knowledge Management**:
+- Automatic extraction of learnings from agent responses
+- Pattern-based knowledge capture (code blocks, "Learned:", "Key insight:", etc.)
+- Categorization by agent type and content category
+- Composite index for efficient queries (userId, agentType, category, confidence)
+
+**Knowledge Retrieval**:
+- Fetches top 50 most relevant knowledge entries before agent execution
+- Matches by agent type (coordinator, coder, etc.) and categories
+- Orders by confidence score and recency
+- Injects accumulated knowledge into agent context
+
+**Supported Categories**:
+- General, coding, research, security, database, workflow
+- Coordinator agents access all categories including coding
+- Knowledge shared across executions for collective intelligence
 
 ### Design System
 
