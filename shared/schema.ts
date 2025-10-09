@@ -127,7 +127,9 @@ export const knowledgeEntries = pgTable("knowledge_entries", {
   confidence: integer("confidence").default(80), // 0-100 confidence score
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_knowledge_query").on(table.userId, table.agentType, table.category, table.confidence.desc()),
+]);
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertWorkflowSchema = createInsertSchema(workflows).omit({ id: true, createdAt: true, updatedAt: true });

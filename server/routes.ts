@@ -21,6 +21,39 @@ async function getDemoUser() {
   });
 }
 
+// Sync Agent records from workflow nodes
+async function syncAgentsFromNodes(workflowId: string, nodes: any[]) {
+  // Delete existing agents for this workflow
+  const existingAgents = await storage.getAgentsByWorkflowId(workflowId);
+  for (const agent of existingAgents) {
+    await storage.deleteAgent(agent.id);
+  }
+
+  // Create new agents from nodes
+  for (const node of nodes) {
+    if (node.type === 'agent') {
+      const role = node.data?.role || 'Coordinator';
+      const provider = node.data?.provider || 'openai';
+      const model = node.data?.model || (provider === 'openai' ? 'gpt-4' : provider === 'anthropic' ? 'claude-3-5-sonnet-20241022' : 'gemini-1.5-flash');
+      
+      await storage.createAgent({
+        workflowId,
+        name: node.data?.label || `${role} Agent`,
+        role,
+        description: node.data?.description || '',
+        provider,
+        model,
+        systemPrompt: node.data?.systemPrompt || null,
+        temperature: node.data?.temperature !== undefined ? node.data.temperature : 70,
+        maxTokens: node.data?.maxTokens || 1000,
+        capabilities: node.data?.capabilities || [],
+        nodeId: node.id,
+        position: node.position,
+      });
+    }
+  }
+}
+
 // Helper to get current user (auth or demo)
 function getCurrentUser(req: Request): string | null {
   const authUser = (req.user as any)?.claims?.sub;
@@ -73,6 +106,10 @@ export async function registerRoutes(app: Express) {
         userId: user.id,
       });
       const workflow = await storage.createWorkflow(data);
+      
+      // Create Agent records for each node in the workflow
+      await syncAgentsFromNodes(workflow.id, workflow.nodes as any[]);
+      
       res.json(workflow);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -115,6 +152,12 @@ export async function registerRoutes(app: Express) {
       if (!workflow) {
         return res.status(404).json({ error: "Workflow not found" });
       }
+      
+      // Sync agents if nodes were updated
+      if (validated.nodes) {
+        await syncAgentsFromNodes(req.params.id, validated.nodes as any[]);
+      }
+      
       res.json(workflow);
     } catch (error: any) {
       if (error.name === 'ZodError') {

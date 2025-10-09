@@ -90,7 +90,8 @@ export class AIExecutor {
       return 'Authentication failed. Please check your API key.';
     }
     if (error.code === 'model_not_found') {
-      return `Model ${error.model} not found or not accessible.`;
+      const model = error.model || 'unknown';
+      return `Model '${model}' not found or not accessible. Your API key may not have access to this model.`;
     }
     return error.message || 'Unknown error occurred during AI execution';
   }
@@ -110,8 +111,11 @@ export class AIExecutor {
       content: msg.content,
     })));
 
+    // Ensure model is defined and use fallback model
+    const modelToUse = agent.model || 'gpt-3.5-turbo';
+
     const response = await this.openai.chat.completions.create({
-      model: agent.model,
+      model: modelToUse,
       messages,
       temperature: context.temperature / 100,
       max_tokens: context.maxTokens,
@@ -137,8 +141,11 @@ export class AIExecutor {
       context.knowledgeContext || []
     );
 
+    // Ensure model is defined
+    const modelToUse = agent.model || 'claude-3-5-sonnet-20241022';
+
     const response = await this.anthropic.messages.create({
-      model: agent.model,
+      model: modelToUse,
       max_tokens: context.maxTokens,
       temperature: context.temperature / 100,
       system: enhancedSystemPrompt,
@@ -161,8 +168,11 @@ export class AIExecutor {
       context.knowledgeContext || []
     );
 
+    // Ensure model is defined
+    const modelToUse = agent.model || 'gemini-1.5-flash';
+
     const model = this.gemini.getGenerativeModel({ 
-      model: agent.model,
+      model: modelToUse,
       systemInstruction: enhancedSystemPrompt,
     });
 

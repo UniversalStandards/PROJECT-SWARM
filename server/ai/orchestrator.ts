@@ -23,6 +23,7 @@ export class WorkflowOrchestrator {
     }
 
     const agents = await storage.getAgentsByWorkflowId(workflowId);
+    
     const execution = await storage.createExecution({
       workflowId,
       userId: workflow.userId,
@@ -32,6 +33,7 @@ export class WorkflowOrchestrator {
 
     try {
       await this.logExecution(execution.id, 'info', 'Workflow execution started');
+      await this.logExecution(execution.id, 'info', `Fetched ${agents.length} agents from database`);
       
       const nodes = workflow.nodes as WorkflowNode[];
       const edges = workflow.edges as WorkflowEdge[];
@@ -51,7 +53,7 @@ export class WorkflowOrchestrator {
         await this.logExecution(
           execution.id, 
           'info', 
-          `Executing agent: ${agent.name}`,
+          `Executing agent: ${agent.name} (Provider: ${agent.provider}, Model: ${agent.model})`,
           agent.id
         );
 
@@ -92,6 +94,14 @@ export class WorkflowOrchestrator {
             }
           }
         }
+
+        // Debug: Log agent details
+        await this.logExecution(
+          execution.id,
+          'info',
+          `Agent details: provider=${agent.provider}, model=${agent.model}`,
+          agent.id
+        );
 
         const result = await aiExecutor.executeAgent(agent, {
           agentId: agent.id,
@@ -163,12 +173,12 @@ export class WorkflowOrchestrator {
   private getCategoriesForAgent(agentType: string): string[] {
     // Map agent types to relevant knowledge categories
     const categoryMap: Record<string, string[]> = {
-      coordinator: ['general', 'workflow', 'coordination', 'planning'],
+      coordinator: ['general', 'workflow', 'coordination', 'planning', 'coding'],
       coder: ['general', 'coding', 'programming', 'algorithms', 'debugging'],
       researcher: ['general', 'research', 'analysis', 'data', 'insights'],
-      database: ['general', 'database', 'sql', 'data-modeling'],
-      security: ['general', 'security', 'authentication', 'encryption'],
-      custom: ['general', 'custom'],
+      database: ['general', 'database', 'sql', 'data-modeling', 'coding'],
+      security: ['general', 'security', 'authentication', 'encryption', 'coding'],
+      custom: ['general', 'custom', 'coding'],
     };
 
     return categoryMap[agentType] || ['general'];
