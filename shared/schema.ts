@@ -115,6 +115,20 @@ export const assistantChats = pgTable("assistant_chats", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const knowledgeEntries = pgTable("knowledge_entries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  agentType: text("agent_type").notNull(), // coordinator, coder, researcher, database, security, custom
+  category: text("category").notNull(), // general, coding, research, security, database, etc
+  content: text("content").notNull(), // the actual knowledge/learning
+  context: text("context"), // optional context about when/how this was learned
+  sourceExecutionId: varchar("source_execution_id").references(() => executions.id, { onDelete: "set null" }),
+  sourceAgentId: varchar("source_agent_id").references(() => agents.id, { onDelete: "set null" }),
+  confidence: integer("confidence").default(80), // 0-100 confidence score
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertWorkflowSchema = createInsertSchema(workflows).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertAgentSchema = createInsertSchema(agents).omit({ id: true, createdAt: true });
@@ -123,6 +137,7 @@ export const insertAgentMessageSchema = createInsertSchema(agentMessages).omit({
 export const insertExecutionLogSchema = createInsertSchema(executionLogs).omit({ id: true, timestamp: true });
 export const insertTemplateSchema = createInsertSchema(templates).omit({ id: true, createdAt: true, usageCount: true });
 export const insertAssistantChatSchema = createInsertSchema(assistantChats).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertKnowledgeEntrySchema = createInsertSchema(knowledgeEntries).omit({ id: true, createdAt: true, updatedAt: true });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -148,3 +163,6 @@ export type Template = typeof templates.$inferSelect;
 
 export type InsertAssistantChat = z.infer<typeof insertAssistantChatSchema>;
 export type AssistantChat = typeof assistantChats.$inferSelect;
+
+export type InsertKnowledgeEntry = z.infer<typeof insertKnowledgeEntrySchema>;
+export type KnowledgeEntry = typeof knowledgeEntries.$inferSelect;
