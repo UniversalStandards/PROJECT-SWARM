@@ -73,11 +73,16 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/workflows/:id", async (req, res) => {
+  app.get("/api/workflows/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = getUserId(req);
       const workflow = await storage.getWorkflowById(req.params.id);
       if (!workflow) {
         return res.status(404).json({ error: "Workflow not found" });
+      }
+      // Verify ownership
+      if (workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
       }
       res.json(workflow);
     } catch (error: any) {
@@ -103,8 +108,19 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/workflows/:id", async (req, res) => {
+  app.patch("/api/workflows/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = getUserId(req);
+      
+      // Verify ownership first
+      const existingWorkflow = await storage.getWorkflowById(req.params.id);
+      if (!existingWorkflow) {
+        return res.status(404).json({ error: "Workflow not found" });
+      }
+      if (existingWorkflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      
       // Define structured schemas for workflow components
       const nodeSchema = z.object({
         id: z.string(),
@@ -154,8 +170,19 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/workflows/:id", async (req, res) => {
+  app.delete("/api/workflows/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = getUserId(req);
+      
+      // Verify ownership
+      const workflow = await storage.getWorkflowById(req.params.id);
+      if (!workflow) {
+        return res.status(404).json({ error: "Workflow not found" });
+      }
+      if (workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      
       await storage.deleteWorkflow(req.params.id);
       res.json({ success: true });
     } catch (error: any) {
@@ -164,8 +191,19 @@ export async function registerRoutes(app: Express) {
   });
 
   // Agents
-  app.get("/api/workflows/:workflowId/agents", async (req, res) => {
+  app.get("/api/workflows/:workflowId/agents", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = getUserId(req);
+      
+      // Verify workflow ownership
+      const workflow = await storage.getWorkflowById(req.params.workflowId);
+      if (!workflow) {
+        return res.status(404).json({ error: "Workflow not found" });
+      }
+      if (workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      
       const agents = await storage.getAgentsByWorkflowId(req.params.workflowId);
       res.json(agents);
     } catch (error: any) {
@@ -173,9 +211,20 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/agents", async (req, res) => {
+  app.post("/api/agents", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = getUserId(req);
       const data = insertAgentSchema.parse(req.body);
+      
+      // Verify workflow ownership
+      const workflow = await storage.getWorkflowById(data.workflowId);
+      if (!workflow) {
+        return res.status(404).json({ error: "Workflow not found" });
+      }
+      if (workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      
       const agent = await storage.createAgent(data);
       res.json(agent);
     } catch (error: any) {
@@ -183,8 +232,21 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/agents/:id", async (req, res) => {
+  app.patch("/api/agents/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = getUserId(req);
+      
+      // Get agent and verify workflow ownership
+      const agent = await storage.getAgentById(req.params.id);
+      if (!agent) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+      
+      const workflow = await storage.getWorkflowById(agent.workflowId);
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      
       // Define capability schema
       const capabilitySchema = z.object({
         type: z.string(),
@@ -212,11 +274,11 @@ export async function registerRoutes(app: Express) {
         return res.status(400).json({ error: "No valid fields to update" });
       }
 
-      const agent = await storage.updateAgent(req.params.id, validated);
-      if (!agent) {
+      const updatedAgent = await storage.updateAgent(req.params.id, validated);
+      if (!updatedAgent) {
         return res.status(404).json({ error: "Agent not found" });
       }
-      res.json(agent);
+      res.json(updatedAgent);
     } catch (error: any) {
       if (error.name === 'ZodError') {
         return res.status(400).json({ error: "Invalid input", details: error.errors });
@@ -236,8 +298,19 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/workflows/:workflowId/executions", async (req, res) => {
+  app.get("/api/workflows/:workflowId/executions", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = getUserId(req);
+      
+      // Verify workflow ownership
+      const workflow = await storage.getWorkflowById(req.params.workflowId);
+      if (!workflow) {
+        return res.status(404).json({ error: "Workflow not found" });
+      }
+      if (workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      
       const executions = await storage.getExecutionsByWorkflowId(req.params.workflowId);
       res.json(executions);
     } catch (error: any) {
@@ -245,21 +318,40 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/executions/:id", async (req, res) => {
+  app.get("/api/executions/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = getUserId(req);
       const execution = await storage.getExecutionById(req.params.id);
       if (!execution) {
         return res.status(404).json({ error: "Execution not found" });
       }
+      
+      // Verify ownership through workflow
+      const workflow = await storage.getWorkflowById(execution.workflowId);
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      
       res.json(execution);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  app.post("/api/executions", async (req, res) => {
+  app.post("/api/executions", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = getUserId(req);
       const { workflowId, input } = executeWorkflowSchema.parse(req.body);
+      
+      // Verify workflow ownership
+      const workflow = await storage.getWorkflowById(workflowId);
+      if (!workflow) {
+        return res.status(404).json({ error: "Workflow not found" });
+      }
+      if (workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      
       const execution = await orchestrator.executeWorkflow(workflowId, input);
       res.json(execution);
     } catch (error: any) {
@@ -270,8 +362,21 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/executions/:id", async (req, res) => {
+  app.patch("/api/executions/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = getUserId(req);
+      
+      // Get execution and verify ownership through workflow
+      const execution = await storage.getExecutionById(req.params.id);
+      if (!execution) {
+        return res.status(404).json({ error: "Execution not found" });
+      }
+      
+      const workflow = await storage.getWorkflowById(execution.workflowId);
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      
       // Validate the update data with Zod schema
       const updateExecutionSchema = z.object({
         status: z.enum(['pending', 'running', 'completed', 'error']).optional(),
@@ -285,11 +390,11 @@ export async function registerRoutes(app: Express) {
         return res.status(400).json({ error: "No valid fields to update" });
       }
 
-      const execution = await storage.updateExecution(req.params.id, validated);
-      if (!execution) {
+      const updatedExecution = await storage.updateExecution(req.params.id, validated);
+      if (!updatedExecution) {
         return res.status(404).json({ error: "Execution not found" });
       }
-      res.json(execution);
+      res.json(updatedExecution);
     } catch (error: any) {
       if (error.name === 'ZodError') {
         return res.status(400).json({ error: "Invalid input", details: error.errors });
@@ -298,8 +403,21 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/executions/:id/logs", async (req, res) => {
+  app.get("/api/executions/:id/logs", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = getUserId(req);
+      
+      // Get execution and verify ownership
+      const execution = await storage.getExecutionById(req.params.id);
+      if (!execution) {
+        return res.status(404).json({ error: "Execution not found" });
+      }
+      
+      const workflow = await storage.getWorkflowById(execution.workflowId);
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      
       const logs = await storage.getLogsByExecutionId(req.params.id);
       res.json(logs);
     } catch (error: any) {
@@ -307,8 +425,21 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/executions/:id/messages", async (req, res) => {
+  app.get("/api/executions/:id/messages", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = getUserId(req);
+      
+      // Get execution and verify ownership
+      const execution = await storage.getExecutionById(req.params.id);
+      if (!execution) {
+        return res.status(404).json({ error: "Execution not found" });
+      }
+      
+      const workflow = await storage.getWorkflowById(execution.workflowId);
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      
       const messages = await storage.getMessagesByExecutionId(req.params.id);
       res.json(messages);
     } catch (error: any) {
