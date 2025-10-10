@@ -26,7 +26,7 @@ export const AgentNode = memo(({ data, selected }: NodeProps) => {
   const Icon = roleIcons[data.role as keyof typeof roleIcons] || Settings;
   const colorClass = roleColors[data.role as keyof typeof roleColors] || roleColors.Custom;
   
-  const status = data.status || 'idle';
+  const status = (data.status as string) || 'idle';
   
   const StatusIcon: React.ComponentType<{ className?: string }> | null = status === 'running' ? Loader2 : status === 'completed' ? CheckCircle2 : status === 'error' ? XCircle : null;
 
@@ -42,8 +42,8 @@ export const AgentNode = memo(({ data, selected }: NodeProps) => {
           
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="font-semibold text-sm truncate" data-testid={`text-agent-name-${data.label}`}>
-                {data.label}
+              <h3 className="font-semibold text-sm truncate" data-testid={`text-agent-name-${data.label as string}`}>
+                {data.label as string}
               </h3>
               {StatusIcon && (
                 <StatusIcon 
@@ -58,19 +58,26 @@ export const AgentNode = memo(({ data, selected }: NodeProps) => {
             
             {data.description && (
               <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                {data.description}
+                {data.description as string}
               </p>
             )}
             
             <div className="flex items-center gap-2 mt-2 flex-wrap">
               <Badge variant="secondary" className="text-xs font-mono">
-                {data.provider}
+                {data.provider as string}
               </Badge>
               <Badge variant="outline" className="text-xs">
-                {data.model}
+                {data.model as string}
               </Badge>
             </div>
           </div>
+        </div>
+        
+        {/* Fixed role label at bottom center */}
+        <div className="text-center pt-2 pb-1 border-t mt-3">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium">
+            {data.role as string}
+          </p>
         </div>
       </div>
       

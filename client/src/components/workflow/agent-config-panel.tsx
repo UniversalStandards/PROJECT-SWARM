@@ -28,6 +28,7 @@ export function AgentConfigPanel({ node, onClose, onUpdate }: AgentConfigPanelPr
     maxTokens: (node.data?.maxTokens as number) || 1000,
   });
 
+  // Only sync formData when node.id changes (different node selected), not on every node data update
   useEffect(() => {
     setFormData({
       label: (node.data?.label as string) || '',
@@ -39,7 +40,7 @@ export function AgentConfigPanel({ node, onClose, onUpdate }: AgentConfigPanelPr
       temperature: (node.data?.temperature as number) || 70,
       maxTokens: (node.data?.maxTokens as number) || 1000,
     });
-  }, [node]);
+  }, [node.id]); // Only re-sync when switching to a different node
 
   const handleChange = (field: string, value: any) => {
     const updated = { ...formData, [field]: value };
