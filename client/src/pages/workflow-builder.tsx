@@ -64,19 +64,55 @@ export default function WorkflowBuilder() {
     enabled: !!workflowId,
   });
 
+  // Fetch agents for the workflow
+  const { data: agents } = useQuery<any[]>({
+    queryKey: ['/api/workflows', workflowId, 'agents'],
+    enabled: !!workflowId,
+  });
+
   // Load workflow data when it's fetched
   useEffect(() => {
     if (workflow) {
       setWorkflowName(workflow.name);
       setWorkflowDescription(workflow.description || '');
+      
+      // Merge workflow nodes with agent data
       if (workflow.nodes && Array.isArray(workflow.nodes)) {
-        setNodes(workflow.nodes as Node[]);
+        const workflowNodes = workflow.nodes as Node[];
+        
+        // If we have agents, merge them with nodes
+        if (agents && agents.length > 0) {
+          const mergedNodes = workflowNodes.map(node => {
+            const agent = agents.find((a: any) => a.nodeId === node.id);
+            if (agent) {
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  agentId: agent.id,
+                  workflowId: workflow.id,
+                  label: agent.name,
+                  provider: agent.provider,
+                  model: agent.model,
+                  role: agent.role,
+                  description: agent.description,
+                  systemPrompt: agent.systemPrompt,
+                }
+              };
+            }
+            return node;
+          });
+          setNodes(mergedNodes);
+        } else {
+          setNodes(workflowNodes);
+        }
       }
+      
       if (workflow.edges && Array.isArray(workflow.edges)) {
         setEdges(workflow.edges as Edge[]);
       }
     }
-  }, [workflow]);
+  }, [workflow, agents]);
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)),
@@ -102,9 +138,10 @@ export default function WorkflowBuilder() {
         label: `${type} Agent`,
         role: type,
         provider: 'openai',
-        model: 'gpt-4',
+        model: 'gpt-4o',
         description: '',
         systemPrompt: '',
+        workflowId: workflowId,
       },
     };
     setNodes((nds) => [...nds, newNode]);

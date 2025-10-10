@@ -278,6 +278,30 @@ export async function registerRoutes(app: Express) {
       if (!updatedAgent) {
         return res.status(404).json({ error: "Agent not found" });
       }
+      
+      // Update workflow nodes to keep them in sync with agent data
+      if (workflow.nodes && Array.isArray(workflow.nodes)) {
+        const updatedNodes = (workflow.nodes as any[]).map((node: any) => {
+          if (node.id === agent.nodeId) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                label: updatedAgent.name,
+                provider: updatedAgent.provider,
+                model: updatedAgent.model,
+                role: updatedAgent.role,
+                description: updatedAgent.description || node.data.description,
+                systemPrompt: updatedAgent.systemPrompt || node.data.systemPrompt,
+              }
+            };
+          }
+          return node;
+        });
+        
+        await storage.updateWorkflow(workflow.id, { nodes: updatedNodes });
+      }
+      
       res.json(updatedAgent);
     } catch (error: any) {
       if (error.name === 'ZodError') {
@@ -523,6 +547,69 @@ export async function registerRoutes(app: Express) {
       await storage.updateTemplateUsageCount(req.params.id);
 
       res.json(workflow);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GitHub integration routes
+  app.get('/api/github/status', isAuthenticated, async (req: AuthRequest, res) => {
+    try {
+      const userId = getUserId(req);
+      const { isGitHubConnected } = await import('./github.js');
+      const connected = await isGitHubConnected(userId);
+      res.json({ connected });
+    } catch (error: any) {
+      res.json({ connected: false, error: error.message });
+    }
+  });
+
+  app.get('/api/github/repos', isAuthenticated, async (req: AuthRequest, res) => {
+    try {
+      const userId = getUserId(req);
+      const { getGitHubClient } = await import('./github.js');
+      const octokit = await getGitHubClient(userId);
+      const { data } = await octokit.repos.listForAuthenticatedUser({
+        sort: 'updated',
+        per_page: 100
+      });
+      res.json(data);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/github/repos', isAuthenticated, async (req: AuthRequest, res) => {
+    try {
+      const userId = getUserId(req);
+      const { name, description, private: isPrivate } = req.body;
+      const { getGitHubClient } = await import('./github.js');
+      const octokit = await getGitHubClient(userId);
+      const { data } = await octokit.repos.createForAuthenticatedUser({
+        name,
+        description: description || '',
+        private: isPrivate || false,
+        auto_init: true
+      });
+      res.json(data);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/github/repos/:owner/:repo/contents', isAuthenticated, async (req: AuthRequest, res) => {
+    try {
+      const userId = getUserId(req);
+      const { owner, repo } = req.params;
+      const { path } = req.query;
+      const { getGitHubClient } = await import('./github.js');
+      const octokit = await getGitHubClient(userId);
+      const { data } = await octokit.repos.getContent({
+        owner,
+        repo,
+        path: (path as string) || ''
+      });
+      res.json(data);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
