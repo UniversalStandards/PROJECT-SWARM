@@ -2,6 +2,9 @@ import { PublicHeader } from "@/components/public-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Workflow, Settings, Play, TrendingUp, ArrowRight } from "lucide-react";
+import workflowImage from "@assets/stock_images/modern_digital_workf_ee8cde70.jpg";
+import dashboardImage from "@assets/stock_images/ai_artificial_intell_f528b33c.jpg";
+import analyticsImage from "@assets/stock_images/data_analytics_visua_75f173e5.jpg";
 
 export default function HowItWorks() {
   const steps = [
@@ -82,10 +85,13 @@ export default function HowItWorks() {
                   </div>
                   
                   <div className={i % 2 === 1 ? 'md:order-1' : ''}>
-                    <Card className="p-8 bg-muted/50">
-                      <div className="aspect-video bg-gradient-to-br from-primary/20 to-blue-500/10 rounded-lg flex items-center justify-center">
-                        <step.icon className="w-20 h-20 text-primary/40" />
-                      </div>
+                    <Card className="overflow-hidden border-primary/20">
+                      <img 
+                        src={i === 0 ? workflowImage : i === 2 ? dashboardImage : analyticsImage} 
+                        alt={step.title}
+                        className="w-full h-auto"
+                        data-testid={`img-step-${i + 1}`}
+                      />
                     </Card>
                   </div>
                 </div>
