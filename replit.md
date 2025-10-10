@@ -11,6 +11,28 @@ SAWRM (AI Agent Swarm Orchestrator) is an enterprise-grade visual workflow platf
 - **Enterprise-Ready**: Built with PostgreSQL, TypeScript, and modern web technologies
 
 ## Recent Changes
+- **2024-10-10**: Deployment Fix & Feature Enhancements
+  - **Deployment Fix**: Resolved Vite peer dependency conflict
+    - Downgraded Vite from 7.1.9 to 6.0.5 for @tailwindcss/vite@4.1.3 compatibility
+    - Verified @vitejs/plugin-react 4.7.0 works with Vite 6
+    - All features tested and working correctly in production
+  - **AI Assistant**: Full chat interface with OpenAI integration
+    - Real-time chat UI with message history and timestamps
+    - Smart suggestions with 3 quick-start prompts
+    - Conversation persistence in database
+    - Enhanced error handling with quota management
+  - **Executable Workflow Templates**: 3 production-ready templates
+    - Code Generation Pipeline: Architecture → Implementation → QA
+    - Research & Summary Pipeline: Research → Data gathering → Synthesis
+    - Content Creation Workflow: Strategy → Writing → SEO
+  - **Visual Content**: Professional stock imagery on all marketing pages
+    - Landing page hero image showcasing workflow visualization
+    - Features page with dashboard and analytics images
+    - How It Works page with 4-step process visuals
+  - **Bug Fixes**: 
+    - Fixed /app routing infinite loop using navigate() instead of window.location
+    - Enhanced error message parsing to show actual server responses
+
 - **2024-10-10**: Production-Ready Website with Complete Authentication & Security
   - **Dual-Surface Architecture**: Public marketing pages (no sidebar) vs authenticated app pages (with sidebar)
   - **7 Marketing Pages**: Landing, Features, How It Works, Pricing, About, Privacy Policy, Terms of Service
