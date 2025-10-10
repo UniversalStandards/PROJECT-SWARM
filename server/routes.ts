@@ -527,4 +527,102 @@ export async function registerRoutes(app: Express) {
       res.status(500).json({ error: error.message });
     }
   });
+
+  // Assistant Chat
+  app.get("/api/assistant/chat", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      
+      // Get or create chat session for user
+      const chats = await storage.getAssistantChatsByUserId(userId);
+      
+      if (chats.length === 0) {
+        // Create new chat session
+        const newChat = await storage.createAssistantChat({
+          userId,
+          workflowId: null,
+          messages: [],
+        });
+        return res.json(newChat);
+      }
+      
+      // Return most recent chat
+      res.json(chats[0]);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/assistant/chat", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const { message } = z.object({ message: z.string() }).parse(req.body);
+      
+      // Get or create chat session
+      const chats = await storage.getAssistantChatsByUserId(userId);
+      let chat = chats[0];
+      
+      if (!chat) {
+        chat = await storage.createAssistantChat({
+          userId,
+          workflowId: null,
+          messages: [],
+        });
+      }
+      
+      // Add user message
+      const userMessage = {
+        role: 'user' as const,
+        content: message,
+        timestamp: new Date().toISOString(),
+      };
+      
+      const messages = [...(chat.messages as any[]), userMessage];
+      
+      // Generate AI response
+      const systemPrompt = `You are a helpful AI assistant for SAWRM (AI Agent Swarm Orchestrator). 
+Your role is to help users build, optimize, and troubleshoot their AI agent workflows.
+
+Key capabilities:
+- Visual workflow design with drag-and-drop interface
+- Multi-AI provider support (OpenAI, Anthropic, Gemini)
+- Persistent knowledge base that agents share
+- Real-time execution monitoring
+- Template library for common use cases
+
+Be concise, practical, and provide actionable guidance. When relevant, suggest specific agent types (Coordinator, Coder, Researcher, Analyst, QA) and explain how to configure them.`;
+
+      // Use OpenAI for assistant responses
+      const { OpenAI } = await import('openai');
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...messages.map((m: any) => ({ role: m.role, content: m.content })),
+        ],
+        temperature: 0.7,
+        max_tokens: 500,
+      });
+      
+      const assistantMessage = {
+        role: 'assistant' as const,
+        content: completion.choices[0].message.content || 'I apologize, I could not generate a response.',
+        timestamp: new Date().toISOString(),
+      };
+      
+      const updatedMessages = [...messages, assistantMessage];
+      
+      // Update chat with new messages
+      const updatedChat = await storage.updateAssistantChat(chat.id, {
+        messages: updatedMessages as any,
+      });
+      
+      res.json(updatedChat);
+    } catch (error: any) {
+      console.error('Assistant chat error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
 }
