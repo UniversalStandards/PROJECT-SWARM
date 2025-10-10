@@ -35,7 +35,7 @@ export default function About() {
         {/* Hero */}
         <section className="py-20 bg-gradient-to-br from-primary/20 via-blue-500/10 to-transparent">
           <div className="container">
-            <div className="max-w-3xl">
+            <div className="max-w-3xl mx-auto text-center">
               <h1 className="text-4xl md:text-5xl font-bold mb-6">
                 About SAWRM
               </h1>
@@ -89,7 +89,7 @@ export default function About() {
         {/* Technology */}
         <section className="py-20">
           <div className="container">
-            <div className="max-w-3xl mx-auto">
+            <div className="max-w-3xl mx-auto text-center">
               <h2 className="text-3xl font-bold mb-6">Built with Modern Technology</h2>
               <p className="text-lg text-muted-foreground mb-8">
                 SAWRM is built on a foundation of proven, enterprise-grade technologies that ensure reliability, performance, and scalability.

@@ -125,7 +125,7 @@ export default function Features() {
         {/* Hero */}
         <section className="py-20 bg-gradient-to-br from-primary/20 via-blue-500/10 to-transparent">
           <div className="container">
-            <div className="max-w-3xl">
+            <div className="max-w-3xl mx-auto text-center">
               <h1 className="text-4xl md:text-5xl font-bold mb-6">
                 Powerful Features for
                 <span className="block text-primary mt-2">AI Agent Orchestration</span>
