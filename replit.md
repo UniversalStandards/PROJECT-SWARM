@@ -11,6 +11,18 @@ SAWRM (AI Agent Swarm Orchestrator) is an enterprise-grade visual workflow platf
 - **Enterprise-Ready**: Built with PostgreSQL, TypeScript, and modern web technologies
 
 ## Recent Changes
+- **2024-10-10**: Production-Ready Website with Complete Authentication & Security
+  - **Dual-Surface Architecture**: Public marketing pages (no sidebar) vs authenticated app pages (with sidebar)
+  - **7 Marketing Pages**: Landing, Features, How It Works, Pricing, About, Privacy Policy, Terms of Service
+  - **5 App Pages**: Workflows, Executions, Templates, AI Assistant, Settings
+  - **Complete Security Implementation**:
+    - All protected API routes enforce isAuthenticated middleware
+    - Per-user ownership verification for all CRUD operations
+    - Data isolation: users can only access/modify their own resources
+    - Proper error responses: 403 Unauthorized, 404 Not Found
+  - **Replit Auth Integration**: Real user authentication, session management, user profiles in sidebar
+  - **End-to-End Testing**: Multi-user isolation and auth flow verified
+
 - **2024-10-09**: Persistent Knowledge Base System
   - Implemented persistent shared knowledge base for agent swarms
   - Knowledge automatically extracted from agent responses and stored
@@ -62,19 +74,35 @@ SAWRM (AI Agent Swarm Orchestrator) is an enterprise-grade visual workflow platf
 
 ### Key Features
 
-#### 1. Workflow Builder (`/workflow-builder`)
+#### 1. Marketing Website
+**Public Pages** (no authentication required):
+- **Landing Page** (`/`): Hero section, feature highlights, pricing preview, CTA buttons
+- **Features** (`/features`): Comprehensive feature showcase with visual hierarchy
+- **How It Works** (`/how-it-works`): Step-by-step workflow explanation
+- **Pricing** (`/pricing`): Three-tier pricing (Free, Pro, Enterprise)
+- **About** (`/about`): Company mission, vision, team information
+- **Privacy Policy** (`/privacy`): Data handling and privacy commitments
+- **Terms of Service** (`/terms`): Legal terms and conditions
+
+**PublicHeader Component**: Consistent navigation across all marketing pages with login/signup CTAs
+
+#### 2. Application Console (Authenticated Access)
+**Protected Pages** (require Replit Auth):
+- **Workflows** (`/app/workflows`): List and manage user workflows, create from templates
+- **Executions** (`/app/executions`): View execution history with status and timestamps
+- **Templates** (`/app/templates`): Browse and use pre-built workflow templates
+- **AI Assistant** (`/app/assistant`): AI-powered workflow assistance (placeholder)
+- **Settings** (`/app/settings`): User profile and preferences
+
+**AppSidebar Component**: Navigation with user profile, email, and all app pages
+
+#### 3. Workflow Builder (`/workflow-builder`)
 - Visual drag-and-drop canvas powered by React Flow
 - Custom agent nodes with role-based styling (Coordinator, Coder, Researcher, etc.)
 - Real-time node configuration panel
 - Support for complex agent topologies with message passing
 
-#### 2. Dashboard (`/`)
-- Quick stats: Active workflows, executions, running agents, success rate
-- Recent workflows with quick access
-- Featured template library
-- Hero section with gradient design
-
-#### 3. Execution Monitor (`/executions/:id`)
+#### 4. Execution Monitor (`/executions/:id`)
 - Real-time execution status tracking
 - Live execution logs with timestamps and severity levels
 - Agent message visualization
@@ -134,29 +162,36 @@ SAWRM (AI Agent Swarm Orchestrator) is an enterprise-grade visual workflow platf
 
 ### API Routes
 
-**Workflows:**
+**Authentication:**
+- `GET /api/auth/user` - Get current authenticated user (protected)
+- `GET /api/login` - Initiate Replit Auth login
+- `GET /api/callback` - OAuth callback handler
+
+**Workflows (All Protected - isAuthenticated + Ownership Verification):**
 - `GET /api/workflows` - List user workflows
 - `POST /api/workflows` - Create workflow
-- `GET /api/workflows/:id` - Get workflow details
-- `PATCH /api/workflows/:id` - Update workflow
-- `DELETE /api/workflows/:id` - Delete workflow
+- `GET /api/workflows/:id` - Get workflow details (verifies userId ownership)
+- `PATCH /api/workflows/:id` - Update workflow (verifies userId ownership)
+- `DELETE /api/workflows/:id` - Delete workflow (verifies userId ownership)
 
-**Agents:**
+**Agents (All Protected - Verified via Workflow Ownership):**
 - `GET /api/workflows/:workflowId/agents` - List workflow agents
 - `POST /api/agents` - Create agent
 - `PATCH /api/agents/:id` - Update agent
 
-**Executions:**
+**Executions (All Protected - Verified via Workflow Ownership):**
 - `GET /api/executions` - List user executions
 - `POST /api/executions` - Execute workflow (triggers orchestrator)
 - `GET /api/executions/:id` - Get execution details
+- `PATCH /api/executions/:id` - Update execution status
 - `GET /api/executions/:id/logs` - Get execution logs
 - `GET /api/executions/:id/messages` - Get agent messages
 
-**Templates:**
-- `GET /api/templates` - List all templates
-- `GET /api/templates/featured` - Featured templates
-- `POST /api/templates` - Create template
+**Templates (Public Resources):**
+- `GET /api/templates` - List all templates (public)
+- `GET /api/templates/featured` - Featured templates (public)
+- `POST /api/templates` - Create template (protected)
+- `POST /api/templates/:id/create-workflow` - Create workflow from template (protected)
 
 ### Environment Variables
 ```
@@ -226,8 +261,20 @@ shared/
 └── schema.ts            # Shared types and schemas
 ```
 
+## Security & Authentication
+- **Replit Auth**: Complete OIDC integration with session management
+- **User Isolation**: All data operations filtered by authenticated user ID (req.user.claims.sub)
+- **Ownership Verification**: Every resource access/modification verifies user ownership
+- **Error Handling**: 
+  - 401 Unauthorized - Missing/invalid authentication
+  - 403 Forbidden - User doesn't own the resource
+  - 404 Not Found - Resource doesn't exist
+  - 400 Bad Request - Invalid input data
+- **Public Resources**: Templates and marketing pages accessible without authentication
+- **Protected Routes**: All /app/* routes require authentication, redirect to login if unauthenticated
+
 ## Notes
-- Mock user authentication currently in place (user ID: "mock-user-id")
-- Seed data includes 3 pre-configured workflow templates
+- Seed data includes 3 pre-configured workflow templates (public resources)
 - React Flow custom nodes support dynamic status updates
 - All AI executions are logged with timestamps and token counts
+- Multi-user data isolation verified via end-to-end testing
