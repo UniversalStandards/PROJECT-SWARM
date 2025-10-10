@@ -9,18 +9,6 @@ import type { Request } from "express";
 // Execution request schema - only workflowId and input are needed from client
 const executeWorkflowSchema = insertExecutionSchema.pick({ workflowId: true, input: true });
 
-// Get the demo user from the database, or create one if not exists
-async function getDemoUser() {
-  // Upsert demo user (will create or update)
-  return await storage.upsertUser({
-    id: 'demo-user-123',
-    email: 'demo@sawrm.ai',
-    firstName: 'Demo',
-    lastName: 'User',
-    profileImageUrl: null,
-  });
-}
-
 // Sync Agent records from workflow nodes
 async function syncAgentsFromNodes(workflowId: string, nodes: any[]) {
   // Delete existing agents for this workflow
@@ -54,10 +42,9 @@ async function syncAgentsFromNodes(workflowId: string, nodes: any[]) {
   }
 }
 
-// Helper to get current user (auth or demo)
-function getCurrentUser(req: Request): string | null {
-  const authUser = (req.user as any)?.claims?.sub;
-  return authUser || null;
+// Helper to get current authenticated user ID
+function getUserId(req: any): string {
+  return req.user.claims.sub;
 }
 
 export async function registerRoutes(app: Express) {
@@ -76,10 +63,10 @@ export async function registerRoutes(app: Express) {
     }
   });
   // Workflows
-  app.get("/api/workflows", async (req, res) => {
+  app.get("/api/workflows", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await getDemoUser();
-      const workflows = await storage.getWorkflowsByUserId(user.id);
+      const userId = getUserId(req);
+      const workflows = await storage.getWorkflowsByUserId(userId);
       res.json(workflows);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -98,12 +85,12 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/workflows", async (req, res) => {
+  app.post("/api/workflows", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await getDemoUser();
+      const userId = getUserId(req);
       const data = insertWorkflowSchema.parse({
         ...req.body,
-        userId: user.id,
+        userId,
       });
       const workflow = await storage.createWorkflow(data);
       
@@ -239,10 +226,10 @@ export async function registerRoutes(app: Express) {
   });
 
   // Executions
-  app.get("/api/executions", async (req, res) => {
+  app.get("/api/executions", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await getDemoUser();
-      const executions = await storage.getExecutionsByUserId(user.id);
+      const userId = getUserId(req);
+      const executions = await storage.getExecutionsByUserId(userId);
       res.json(executions);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -380,9 +367,9 @@ export async function registerRoutes(app: Express) {
   });
 
   // Create workflow from template
-  app.post("/api/templates/:id/create-workflow", async (req, res) => {
+  app.post("/api/templates/:id/create-workflow", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await getDemoUser();
+      const userId = getUserId(req);
       const template = await storage.getTemplateById(req.params.id);
       
       if (!template) {
@@ -391,7 +378,7 @@ export async function registerRoutes(app: Express) {
 
       // Create workflow from template
       const workflowData = insertWorkflowSchema.parse({
-        userId: user.id,
+        userId,
         name: `${template.name} (Copy)`,
         description: template.description,
         nodes: template.nodes,
