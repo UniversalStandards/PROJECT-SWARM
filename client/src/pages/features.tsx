@@ -2,6 +2,8 @@ import { PublicHeader } from "@/components/public-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Network, Brain, Sparkles, Zap, Shield, TrendingUp, GitBranch, Database, Eye, Code, ArrowRight } from "lucide-react";
+import dashboardImage from "@assets/stock_images/ai_artificial_intell_f528b33c.jpg";
+import analyticsImage from "@assets/stock_images/data_analytics_visua_75f173e5.jpg";
 
 export default function Features() {
   const features = [
@@ -137,6 +139,40 @@ export default function Features() {
                 Get Started Free
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
+            </div>
+          </div>
+        </section>
+
+        {/* Visual Showcase */}
+        <section className="py-20">
+          <div className="container">
+            <div className="grid md:grid-cols-2 gap-8 mb-12">
+              <div className="space-y-4">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-sm">
+                  <Zap className="w-4 h-4 text-primary" />
+                  Real-time Monitoring
+                </div>
+                <h3 className="text-2xl font-bold">Track Every Execution</h3>
+                <p className="text-muted-foreground">
+                  Monitor agent workflows in real-time with comprehensive dashboards, live logs, and performance metrics.
+                </p>
+                <div className="rounded-lg overflow-hidden border border-primary/20">
+                  <img src={dashboardImage} alt="Real-time monitoring dashboard" className="w-full" data-testid="img-dashboard" />
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-sm">
+                  <TrendingUp className="w-4 h-4 text-primary" />
+                  Analytics & Insights
+                </div>
+                <h3 className="text-2xl font-bold">Optimize Performance</h3>
+                <p className="text-muted-foreground">
+                  Gain insights into agent behavior, execution patterns, and knowledge accumulation with detailed analytics.
+                </p>
+                <div className="rounded-lg overflow-hidden border border-primary/20">
+                  <img src={analyticsImage} alt="Analytics and insights" className="w-full" data-testid="img-analytics" />
+                </div>
+              </div>
             </div>
           </div>
         </section>

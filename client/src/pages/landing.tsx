@@ -2,6 +2,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PublicHeader } from "@/components/public-header";
 import { Sparkles, Zap, Shield, Network, Brain, TrendingUp, ArrowRight, Check } from "lucide-react";
+import workflowImage from "@assets/stock_images/modern_digital_workf_ee8cde70.jpg";
+import dashboardImage from "@assets/stock_images/ai_artificial_intell_f528b33c.jpg";
+import analyticsImage from "@assets/stock_images/data_analytics_visua_75f173e5.jpg";
 
 export default function Landing() {
   const features = [
@@ -81,6 +84,19 @@ export default function Landing() {
                   See How It Works
                 </a>
               </Button>
+            </div>
+
+            {/* Product Screenshot */}
+            <div className="mt-12 max-w-5xl mx-auto">
+              <div className="relative rounded-xl overflow-hidden shadow-2xl border border-primary/20">
+                <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 to-blue-500/20" />
+                <img 
+                  src={workflowImage} 
+                  alt="SAWRM Workflow Builder Interface" 
+                  className="w-full h-auto"
+                  data-testid="img-hero-product"
+                />
+              </div>
             </div>
           </div>
         </div>
