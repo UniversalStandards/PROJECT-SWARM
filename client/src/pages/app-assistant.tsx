@@ -44,7 +44,10 @@ export default function AppAssistant() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message }),
       });
-      if (!response.ok) throw new Error('Failed to send message');
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to send message');
+      }
       return response.json();
     },
     onSuccess: () => {

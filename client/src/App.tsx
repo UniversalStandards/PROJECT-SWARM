@@ -45,6 +45,14 @@ function PublicRouter() {
 }
 
 function AppRouter() {
+  const [location, navigate] = useLocation();
+  
+  // Redirect /app to /app/workflows
+  if (location === "/app") {
+    navigate("/app/workflows");
+    return null;
+  }
+  
   return (
     <Switch>
       <Route path="/app/workflows" component={AppWorkflows} />
@@ -86,7 +94,7 @@ function ProtectedAppLayout() {
 
 export default function App() {
   const [location] = useLocation();
-  const isAppRoute = location.startsWith("/app/");
+  const isAppRoute = location.startsWith("/app/") || location === "/app";
 
   return (
     <QueryClientProvider client={queryClient}>

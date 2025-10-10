@@ -622,7 +622,15 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
       res.json(updatedChat);
     } catch (error: any) {
       console.error('Assistant chat error:', error);
-      res.status(500).json({ error: error.message });
+      
+      // Handle OpenAI quota/rate limit errors gracefully
+      if (error.status === 429 || error.message?.includes('quota')) {
+        return res.status(503).json({ 
+          error: 'AI service temporarily unavailable. Please try again later or check your API quota.' 
+        });
+      }
+      
+      res.status(500).json({ error: error.message || 'Failed to process message' });
     }
   });
 }
