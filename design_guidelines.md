@@ -1,4 +1,4 @@
-# SAWRM AI Agent Swarm Orchestrator - Design Guidelines
+# SWARM - Smart Workflow Automation & Repository Manager - Design Guidelines
 
 ## Design Approach: Hybrid System
 

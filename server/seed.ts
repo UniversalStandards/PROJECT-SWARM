@@ -6,8 +6,8 @@ async function seed() {
   // Create a mock user for templates
   const user = await storage.createUser({
     replitId: 'template-user-id',
-    username: 'SAWRM Templates',
-    email: 'templates@sawrm.ai',
+    username: 'SWARM Templates',
+    email: 'templates@swarm.ai',
     avatarUrl: null,
   });
 

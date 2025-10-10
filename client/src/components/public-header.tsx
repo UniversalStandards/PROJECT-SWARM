@@ -39,8 +39,8 @@ export function PublicHeader() {
             <Sparkles className="w-5 h-5 text-primary-foreground" />
           </div>
           <div className="hidden sm:block">
-            <h2 className="font-bold text-lg">SAWRM</h2>
-            <p className="text-xs text-muted-foreground">AI Agent Orchestrator</p>
+            <h2 className="font-bold text-lg">SWARM</h2>
+            <p className="text-xs text-muted-foreground">Workflow & Repo Manager</p>
           </div>
         </Link>
 
@@ -93,8 +93,8 @@ export function PublicHeader() {
                     <Sparkles className="w-5 h-5 text-primary-foreground" />
                   </div>
                   <div>
-                    <h2 className="font-bold text-lg">SAWRM</h2>
-                    <p className="text-xs text-muted-foreground">AI Agent Orchestrator</p>
+                    <h2 className="font-bold text-lg">SWARM</h2>
+                    <p className="text-xs text-muted-foreground">Workflow & Repo Manager</p>
                   </div>
                 </div>
                 <nav className="flex flex-col gap-4">

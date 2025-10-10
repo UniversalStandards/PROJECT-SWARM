@@ -133,7 +133,7 @@ export default function Features() {
                 <span className="block text-primary mt-2">AI Agent Orchestration</span>
               </h1>
               <p className="text-xl text-muted-foreground mb-8">
-                Everything you need to build, deploy, and scale intelligent multi-agent workflows with enterprise-grade reliability.
+                Deploy AI agent swarms that intelligently automate workflows and manage your repositories.
               </p>
               <Button size="lg" onClick={() => window.location.href = "/api/login"} data-testid="button-get-started">
                 Get Started Free
@@ -208,7 +208,7 @@ export default function Features() {
                 Ready to Experience These Features?
               </h2>
               <p className="text-lg text-muted-foreground mb-8">
-                Start building your AI agent swarms today with SAWRM
+                Start building your AI agent swarms today with SWARM
               </p>
               <Button size="lg" onClick={() => window.location.href = "/api/login"} data-testid="button-cta-get-started">
                 Start Building Now

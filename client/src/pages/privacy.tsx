@@ -57,7 +57,7 @@ export default function Privacy() {
               <h2 className="text-2xl font-semibold mb-4">4. AI Provider Integration</h2>
               <div className="space-y-4 text-muted-foreground">
                 <p>
-                  SAWRM integrates with third-party AI providers (OpenAI, Anthropic, Google). When you use these providers:
+                  SWARM integrates with third-party AI providers (OpenAI, Anthropic, Google). When you use these providers:
                 </p>
                 <ul className="list-disc pl-6 space-y-2">
                   <li>Your API keys are encrypted and stored securely</li>

@@ -48,10 +48,10 @@ export default function HowItWorks() {
           <div className="container">
             <div className="max-w-3xl mx-auto text-center">
               <h1 className="text-4xl md:text-5xl font-bold mb-6">
-                How SAWRM Works
+                How SWARM Works
               </h1>
               <p className="text-xl text-muted-foreground">
-                From design to deployment, orchestrate AI agent swarms in four simple steps
+                Deploy AI agent swarms that intelligently automate workflows and manage your repositories. From design to deployment in four simple steps.
               </p>
             </div>
           </div>

@@ -164,7 +164,7 @@ export default function Pricing() {
                 Ready to Start Building?
               </h2>
               <p className="text-lg text-muted-foreground mb-8">
-                Join teams using SAWRM to orchestrate AI agent swarms
+                Join teams using SWARM to orchestrate AI agent swarms
               </p>
               <Button size="lg" onClick={() => window.location.href = "/api/login"} data-testid="button-cta-get-started">
                 Get Started Free

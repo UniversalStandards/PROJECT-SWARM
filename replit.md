@@ -1,7 +1,7 @@
-# SAWRM - AI Agent Swarm Orchestrator
+# SWARM - Smart Workflow Automation & Repository Manager
 
 ## Overview
-SAWRM (AI Agent Swarm Orchestrator) is an enterprise-grade visual workflow platform for orchestrating AI agent swarms. It enables users to design, deploy, and monitor intelligent multi-agent workflows with drag-and-drop simplicity and real-time execution tracking.
+SWARM (Smart Workflow Automation & Repository Manager) is an enterprise-grade visual workflow platform for orchestrating AI agent swarms. It enables users to design, deploy, and monitor intelligent multi-agent workflows with drag-and-drop simplicity, real-time execution tracking, and direct repository management.
 
 ## Project Goals
 - **Visual Workflow Design**: Drag-and-drop interface using React Flow for building agent swarms

@@ -71,7 +71,7 @@ export default function Landing() {
             </h1>
             
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              SAWRM enables you to design, deploy, and monitor intelligent multi-agent workflows with drag-and-drop simplicity and persistent knowledge sharing.
+              Deploy AI agent swarms that intelligently automate workflows and manage your repositories.
             </p>
             
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -92,7 +92,7 @@ export default function Landing() {
                 <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 to-blue-500/20" />
                 <img 
                   src={workflowImage} 
-                  alt="SAWRM Workflow Builder Interface" 
+                  alt="SWARM Workflow Builder Interface" 
                   className="w-full h-auto"
                   data-testid="img-hero-product"
                 />
@@ -130,7 +130,7 @@ export default function Landing() {
           <div className="text-center space-y-4 mb-16">
             <h2 className="text-3xl md:text-4xl font-bold">Built for Real-World Use Cases</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              From code generation to research analysis, SAWRM adapts to your workflow
+              From code generation to research analysis, SWARM adapts to your workflow
             </p>
           </div>
           
@@ -158,7 +158,7 @@ export default function Landing() {
               Ready to Build Your AI Agent Swarm?
             </h2>
             <p className="text-lg text-muted-foreground mb-8">
-              Join teams using SAWRM to orchestrate intelligent workflows at scale
+              Join teams using SWARM to orchestrate intelligent workflows at scale
             </p>
             <Button size="lg" onClick={handleGetStarted} className="text-lg px-8" data-testid="button-cta-get-started">
               Start Building Now
@@ -177,8 +177,8 @@ export default function Landing() {
                 <Sparkles className="w-5 h-5 text-primary-foreground" />
               </div>
               <div>
-                <h3 className="font-bold">SAWRM</h3>
-                <p className="text-xs text-muted-foreground">AI Agent Orchestrator</p>
+                <h3 className="font-bold">SWARM</h3>
+                <p className="text-xs text-muted-foreground">Workflow & Repo Manager</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-6">
@@ -194,7 +194,7 @@ export default function Landing() {
             </div>
           </div>
           <div className="mt-8 text-center text-sm text-muted-foreground">
-            © {new Date().getFullYear()} SAWRM. All rights reserved.
+            © {new Date().getFullYear()} SWARM. All rights reserved.
           </div>
         </div>
       </footer>

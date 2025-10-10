@@ -16,7 +16,7 @@ export default function Terms() {
               <h2 className="text-2xl font-semibold mb-4">1. Acceptance of Terms</h2>
               <div className="space-y-4 text-muted-foreground">
                 <p>
-                  By accessing and using SAWRM ("the Service"), you accept and agree to be bound by the terms and provision of this agreement. 
+                  By accessing and using SWARM ("the Service"), you accept and agree to be bound by the terms and provision of this agreement. 
                   If you do not agree to these terms, please do not use the Service.
                 </p>
               </div>
@@ -26,8 +26,8 @@ export default function Terms() {
               <h2 className="text-2xl font-semibold mb-4">2. Description of Service</h2>
               <div className="space-y-4 text-muted-foreground">
                 <p>
-                  SAWRM is an AI agent swarm orchestration platform that enables users to design, deploy, and monitor intelligent 
-                  multi-agent workflows. The Service integrates with third-party AI providers and requires users to supply their own API keys.
+                  SWARM (Smart Workflow Automation & Repository Manager) is an AI agent swarm orchestration platform that enables users to design, deploy, and monitor intelligent 
+                  multi-agent workflows and automate repository management. The Service integrates with third-party AI providers and GitHub, and requires users to supply their own API keys.
                 </p>
               </div>
             </Card>
@@ -80,7 +80,7 @@ export default function Terms() {
               <h2 className="text-2xl font-semibold mb-4">6. Intellectual Property</h2>
               <div className="space-y-4 text-muted-foreground">
                 <p>
-                  The Service and its original content, features, and functionality are owned by SAWRM and are protected by international 
+                  The Service and its original content, features, and functionality are owned by SWARM and are protected by international 
                   copyright, trademark, and other intellectual property laws.
                 </p>
                 <p className="mt-4">
@@ -104,7 +104,7 @@ export default function Terms() {
               <h2 className="text-2xl font-semibold mb-4">8. Limitation of Liability</h2>
               <div className="space-y-4 text-muted-foreground">
                 <p>
-                  To the maximum extent permitted by law, SAWRM shall not be liable for any indirect, incidental, special, consequential, 
+                  To the maximum extent permitted by law, SWARM shall not be liable for any indirect, incidental, special, consequential, 
                   or punitive damages resulting from your use or inability to use the Service.
                 </p>
               </div>

@@ -70,8 +70,8 @@ export function AppSidebar() {
             <Sparkles className="w-5 h-5 text-primary-foreground" />
           </div>
           <div>
-            <h2 className="font-bold text-lg">SAWRM</h2>
-            <p className="text-xs text-muted-foreground">Agent Orchestrator</p>
+            <h2 className="font-bold text-lg">SWARM</h2>
+            <p className="text-xs text-muted-foreground">Workflow & Repo Manager</p>
           </div>
         </div>
       </SidebarHeader>

@@ -580,17 +580,19 @@ export async function registerRoutes(app: Express) {
       const messages = [...(chat.messages as any[]), userMessage];
       
       // Generate AI response
-      const systemPrompt = `You are a helpful AI assistant for SAWRM (AI Agent Swarm Orchestrator). 
-Your role is to help users build, optimize, and troubleshoot their AI agent workflows.
+      const systemPrompt = `You are a helpful AI assistant for SWARM (Smart Workflow Automation & Repository Manager). 
+Your role is to help users build, optimize, and troubleshoot their AI agent workflows and repository automation.
 
 Key capabilities:
 - Visual workflow design with drag-and-drop interface
 - Multi-AI provider support (OpenAI, Anthropic, Gemini)
 - Persistent knowledge base that agents share
 - Real-time execution monitoring
+- Repository management and automation with GitHub integration
+- Agent swarms that can refine existing repos or create new ones
 - Template library for common use cases
 
-Be concise, practical, and provide actionable guidance. When relevant, suggest specific agent types (Coordinator, Coder, Researcher, Analyst, QA) and explain how to configure them.`;
+Be concise, practical, and provide actionable guidance. When relevant, suggest specific agent types (Coordinator, Coder, Researcher, Analyst, QA) and explain how to configure them. Help users leverage repository automation for code generation, refactoring, and intelligent repository management.`;
 
       // Use OpenAI for assistant responses
       const { OpenAI } = await import('openai');

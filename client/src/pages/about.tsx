@@ -23,7 +23,7 @@ export default function About() {
     {
       icon: TrendingUp,
       title: "Continuous Improvement",
-      description: "We're constantly evolving SAWRM based on user feedback, emerging AI capabilities, and industry best practices."
+      description: "We're constantly evolving SWARM based on user feedback, emerging AI capabilities, and industry best practices."
     }
   ];
 
@@ -37,10 +37,10 @@ export default function About() {
           <div className="container">
             <div className="max-w-3xl mx-auto text-center">
               <h1 className="text-4xl md:text-5xl font-bold mb-6">
-                About SAWRM
+                About SWARM
               </h1>
               <p className="text-xl text-muted-foreground">
-                Building the future of AI agent orchestration with visual simplicity and enterprise reliability
+                Building the future of AI agent orchestration with visual simplicity, enterprise reliability, and intelligent repository management
               </p>
             </div>
           </div>
@@ -51,7 +51,7 @@ export default function About() {
           <div className="container">
             <div className="max-w-3xl mx-auto space-y-6 text-lg">
               <p className="text-muted-foreground">
-                SAWRM (AI Agent Swarm Orchestrator) was born from a simple observation: as AI models become more powerful, the real challenge isn't accessing AI—it's orchestrating multiple AI agents to work together effectively.
+                SWARM (Smart Workflow Automation & Repository Manager) was born from a simple observation: as AI models become more powerful, the real challenge isn't just accessing AI—it's orchestrating multiple AI agents to work together effectively while managing repository workflows.
               </p>
               
               <p className="text-muted-foreground">
@@ -63,7 +63,7 @@ export default function About() {
               </p>
               
               <p className="text-muted-foreground">
-                Today, SAWRM serves developers, researchers, and businesses who need to coordinate AI agents at scale—from code generation pipelines to research workflows and beyond.
+                Today, SWARM serves developers, researchers, and businesses who need to coordinate AI agents at scale—from code generation pipelines to research workflows and repository management.
               </p>
             </div>
           </div>
@@ -92,7 +92,7 @@ export default function About() {
             <div className="max-w-3xl mx-auto text-center">
               <h2 className="text-3xl font-bold mb-6">Built with Modern Technology</h2>
               <p className="text-lg text-muted-foreground mb-8">
-                SAWRM is built on a foundation of proven, enterprise-grade technologies that ensure reliability, performance, and scalability.
+                SWARM is built on a foundation of proven, enterprise-grade technologies that ensure reliability, performance, and scalability.
               </p>
               
               <div className="grid md:grid-cols-2 gap-4">
@@ -128,7 +128,7 @@ export default function About() {
                 Join Us in Building the Future
               </h2>
               <p className="text-lg text-muted-foreground mb-8">
-                Start orchestrating AI agent swarms with SAWRM today
+                Start orchestrating AI agent swarms with SWARM today
               </p>
               <Button size="lg" onClick={() => window.location.href = "/api/login"} data-testid="button-get-started">
                 Get Started Free
