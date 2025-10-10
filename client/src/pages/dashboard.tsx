@@ -46,7 +46,7 @@ export default function Dashboard() {
         title: "Workflow Created",
         description: `Created "${workflow.name}" from template`,
       });
-      setLocation(`/workflow-builder/${workflow.id}`);
+      setLocation(`/app/workflow-builder/${workflow.id}`);
     },
     onError: () => {
       toast({
@@ -108,7 +108,7 @@ export default function Dashboard() {
           </div>
 
           <div className="flex justify-center gap-4 mb-16">
-            <Link href="/workflow-builder">
+            <Link href="/app/workflow-builder">
               <Button size="lg" className="gap-2" data-testid="button-create-workflow">
                 <Plus className="w-5 h-5" />
                 Create New Workflow

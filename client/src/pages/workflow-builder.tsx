@@ -129,22 +129,73 @@ export default function WorkflowBuilder() {
     []
   );
 
-  const addAgentNode = (type: string) => {
-    const newNode: Node = {
-      id: `agent-${Date.now()}`,
-      type: 'agent',
-      position: { x: Math.random() * 400 + 100, y: Math.random() * 300 + 100 },
-      data: {
-        label: `${type} Agent`,
+  const addAgentNode = async (type: string) => {
+    if (!workflowId) {
+      toast({
+        title: "Error",
+        description: "Please save the workflow first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const nodeId = `agent-${Date.now()}`;
+    
+    try {
+      // Create agent in database first
+      const response = await apiRequest('POST', '/api/agents', {
+        name: `${type} Agent`,
         role: type,
         provider: 'openai',
         model: 'gpt-4o',
         description: '',
         systemPrompt: '',
         workflowId: workflowId,
-      },
-    };
-    setNodes((nds) => [...nds, newNode]);
+        nodeId: nodeId,
+        temperature: 70,
+        maxTokens: 4000,
+      });
+      
+      const agent = await response.json();
+      
+      // Then create React Flow node with agent ID
+      const newNode: Node = {
+        id: nodeId,
+        type: 'agent',
+        position: { x: Math.random() * 400 + 100, y: Math.random() * 300 + 100 },
+        data: {
+          agentId: agent.id,
+          label: agent.name,
+          role: agent.role,
+          provider: agent.provider,
+          model: agent.model,
+          description: agent.description,
+          systemPrompt: agent.systemPrompt,
+          workflowId: workflowId,
+        },
+      };
+      
+      // Update local state AND save to workflow
+      const updatedNodes = [...nodes, newNode];
+      setNodes(updatedNodes);
+      
+      // Save workflow with new node to persist it
+      await apiRequest('PATCH', `/api/workflows/${workflowId}`, {
+        nodes: updatedNodes,
+        edges: edges,
+      });
+      
+      // Invalidate queries to refetch updated data
+      queryClient.invalidateQueries({ queryKey: ['/api/workflows', workflowId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/workflows', workflowId, 'agents'] });
+    } catch (error) {
+      console.error('Failed to create agent:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create agent",
+        variant: "destructive",
+      });
+    }
   };
 
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
@@ -172,7 +223,7 @@ export default function WorkflowBuilder() {
     onSuccess: (data: any) => {
       if (!workflowId) {
         setWorkflowId(data.id);
-        setLocation(`/workflow-builder/${data.id}`);
+        setLocation(`/app/workflow-builder/${data.id}`);
       }
       queryClient.invalidateQueries({ queryKey: ['/api/workflows'] });
       toast({
