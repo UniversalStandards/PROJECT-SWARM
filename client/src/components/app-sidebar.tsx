@@ -12,7 +12,6 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import {
-  LayoutDashboard,
   Workflow,
   Activity,
   LayoutTemplate,
@@ -20,44 +19,48 @@ import {
   Bot,
   Sparkles,
 } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from "@/hooks/useAuth";
 
 const menuItems = [
   {
-    title: "Dashboard",
-    url: "/",
-    icon: LayoutDashboard,
-  },
-  {
     title: "Workflows",
-    url: "/workflows",
+    url: "/app/workflows",
     icon: Workflow,
   },
   {
     title: "Executions",
-    url: "/executions",
+    url: "/app/executions",
     icon: Activity,
   },
   {
     title: "Templates",
-    url: "/templates",
+    url: "/app/templates",
     icon: LayoutTemplate,
   },
   {
     title: "AI Assistant",
-    url: "/assistant",
+    url: "/app/assistant",
     icon: Bot,
   },
   {
     title: "Settings",
-    url: "/settings",
+    url: "/app/settings",
     icon: Settings,
   },
 ];
 
 export function AppSidebar() {
   const [location] = useLocation();
+  const { user } = useAuth();
+
+  const displayName = user?.firstName && user?.lastName 
+    ? `${user.firstName} ${user.lastName}` 
+    : user?.email || "User";
+  
+  const initials = user?.firstName && user?.lastName
+    ? `${user.firstName[0]}${user.lastName[0]}`
+    : user?.email?.[0]?.toUpperCase() || "U";
 
   return (
     <Sidebar>
@@ -97,20 +100,22 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="p-4">
-        <div className="flex items-center gap-3 p-2 rounded-lg hover-elevate transition-all cursor-pointer">
-          <Avatar className="h-8 w-8">
-            <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-              U
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">User</p>
-            <p className="text-xs text-muted-foreground truncate">user@example.com</p>
+        <Link href="/app/settings">
+          <div className="flex items-center gap-3 p-2 rounded-lg hover-elevate transition-all cursor-pointer" data-testid="nav-user-profile">
+            <Avatar className="h-8 w-8">
+              {user?.profileImageUrl && <AvatarImage src={user.profileImageUrl} />}
+              <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{displayName}</p>
+              {user?.email && (
+                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+              )}
+            </div>
           </div>
-          <Badge variant="secondary" className="text-xs">
-            Pro
-          </Badge>
-        </div>
+        </Link>
       </SidebarFooter>
     </Sidebar>
   );
