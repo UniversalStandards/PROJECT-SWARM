@@ -5,6 +5,17 @@ import { orchestrator } from "./ai/orchestrator";
 import { z } from "zod";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import type { Request } from "express";
+import crypto from "crypto";
+import { 
+  getGitHubAuthUrl, 
+  exchangeCodeForToken, 
+  storeGitHubTokens, 
+  revokeGitHubToken,
+  getGitHubToken,
+  isGitHubTokenExpired 
+} from "./auth/github-oauth";
+import { withGitHubAuth, type GitHubAuthRequest } from "./middleware/github-auth";
+import { encrypt, decrypt, maskToken } from "./auth/encryption";
 
 // Execution request schema - only workflowId and input are needed from client
 const executeWorkflowSchema = insertExecutionSchema.pick({ workflowId: true, input: true });
@@ -62,6 +73,92 @@ export async function registerRoutes(app: Express) {
       res.status(500).json({ message: "Failed to fetch user" });
     }
   });
+
+  // GitHub OAuth routes
+  app.get('/api/auth/github/authorize', isAuthenticated, async (req: any, res) => {
+    try {
+      // Generate CSRF state token
+      const state = crypto.randomBytes(32).toString('hex');
+      
+      // Store state in session for verification
+      if (req.session) {
+        req.session.githubOAuthState = state;
+      }
+      
+      // Generate and redirect to GitHub authorization URL
+      const authUrl = getGitHubAuthUrl(state);
+      res.json({ authUrl });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/auth/github/callback', isAuthenticated, async (req: any, res) => {
+    try {
+      const { code, state } = req.query;
+      
+      if (!code || typeof code !== 'string') {
+        return res.status(400).json({ error: 'Missing authorization code' });
+      }
+      
+      // Verify state to prevent CSRF
+      if (req.session && req.session.githubOAuthState !== state) {
+        return res.status(400).json({ error: 'Invalid state parameter' });
+      }
+      
+      // Clear state from session
+      if (req.session) {
+        delete req.session.githubOAuthState;
+      }
+      
+      // Exchange code for token
+      const { accessToken, refreshToken, expiresAt } = await exchangeCodeForToken(code);
+      
+      // Store tokens for user
+      const userId = getUserId(req);
+      await storeGitHubTokens(userId, accessToken, refreshToken, expiresAt);
+      
+      // Redirect to settings page
+      res.redirect('/app/settings?github=connected');
+    } catch (error: any) {
+      console.error('GitHub OAuth callback error:', error);
+      res.redirect('/app/settings?github=error');
+    }
+  });
+
+  app.get('/api/auth/github/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.json({ connected: false });
+      }
+      
+      const hasToken = !!user.githubAccessToken;
+      const isExpired = isGitHubTokenExpired(user);
+      const maskedToken = hasToken ? maskToken(getGitHubToken(user)) : null;
+      
+      res.json({ 
+        connected: hasToken && !isExpired,
+        expired: isExpired,
+        tokenPreview: maskedToken
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/auth/github/disconnect', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      await revokeGitHubToken(userId);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Workflows
   app.get("/api/workflows", isAuthenticated, async (req: any, res) => {
     try {
@@ -266,6 +363,10 @@ export async function registerRoutes(app: Express) {
         temperature: z.number().int().min(0).max(100).optional(),
         maxTokens: z.number().int().min(1).max(100000).optional(),
         capabilities: z.array(capabilitySchema).optional(),
+        topP: z.number().int().min(0).max(100).optional(),
+        frequencyPenalty: z.number().int().min(-200).max(200).optional(),
+        presencePenalty: z.number().int().min(-200).max(200).optional(),
+        stopSequences: z.array(z.string()).optional(),
       }).strict();
 
       const validated = updateAgentSchema.parse(req.body);
@@ -502,9 +603,20 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/templates", async (req, res) => {
+  app.post("/api/templates", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = getUserId(req);
       const data = insertTemplateSchema.parse(req.body);
+      
+      // Verify workflow ownership
+      const workflow = await storage.getWorkflowById(data.workflowId);
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      
+      // Mark workflow as template
+      await storage.updateWorkflow(data.workflowId, { isTemplate: true });
+      
       const template = await storage.createTemplate(data);
       res.json(template);
     } catch (error: any) {
@@ -512,10 +624,137 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  app.put("/api/templates/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const template = await storage.getTemplateById(req.params.id);
+      
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+      
+      // Verify workflow ownership
+      const workflow = await storage.getWorkflowById(template.workflowId);
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      
+      const updateTemplateSchema = z.object({
+        name: z.string().min(1).max(255).optional(),
+        description: z.string().optional(),
+        category: z.string().optional(),
+        thumbnailUrl: z.string().url().optional().nullable(),
+        featured: z.boolean().optional(),
+      }).strict();
+      
+      const validated = updateTemplateSchema.parse(req.body);
+      
+      const updated = await storage.updateTemplate(req.params.id, validated);
+      res.json(updated);
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/templates/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const template = await storage.getTemplateById(req.params.id);
+      
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+      
+      // Verify workflow ownership
+      const workflow = await storage.getWorkflowById(template.workflowId);
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      
+      // Unmark workflow as template (don't delete the workflow)
+      await storage.updateWorkflow(template.workflowId, { isTemplate: false });
+      
+      await storage.deleteTemplate(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post("/api/templates/:id/use", async (req, res) => {
     try {
       await storage.updateTemplateUsageCount(req.params.id);
       res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/templates/:id/duplicate", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const template = await storage.getTemplateById(req.params.id);
+      
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+      
+      // Get the source workflow
+      const workflow = await storage.getWorkflowById(template.workflowId);
+      if (!workflow) {
+        return res.status(404).json({ error: "Template workflow not found" });
+      }
+      
+      // Create a new workflow from this template
+      const newWorkflow = await storage.createWorkflow({
+        userId,
+        name: `${template.name} (Copy)`,
+        description: template.description,
+        nodes: workflow.nodes,
+        edges: workflow.edges,
+        category: template.category,
+        isTemplate: false,
+      });
+      
+      res.json(newWorkflow);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/templates/:id/export", async (req, res) => {
+    try {
+      const template = await storage.getTemplateById(req.params.id);
+      
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+      
+      // Get the workflow data
+      const workflow = await storage.getWorkflowById(template.workflowId);
+      if (!workflow) {
+        return res.status(404).json({ error: "Template workflow not found" });
+      }
+      
+      const exportData = {
+        template: {
+          name: template.name,
+          description: template.description,
+          category: template.category,
+        },
+        workflow: {
+          nodes: workflow.nodes,
+          edges: workflow.edges,
+        },
+        exportedAt: new Date().toISOString(),
+      };
+      
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="${template.name.replace(/[^a-zA-Z0-9]/g, '-')}-template.json"`);
+      res.json(exportData);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -531,13 +770,19 @@ export async function registerRoutes(app: Express) {
         return res.status(404).json({ error: "Template not found" });
       }
 
+      // Get the source workflow
+      const sourceWorkflow = await storage.getWorkflowById(template.workflowId);
+      if (!sourceWorkflow) {
+        return res.status(404).json({ error: "Template workflow not found" });
+      }
+
       // Create workflow from template
       const workflowData = insertWorkflowSchema.parse({
         userId,
         name: `${template.name} (Copy)`,
         description: template.description,
-        nodes: template.nodes,
-        edges: template.edges,
+        nodes: sourceWorkflow.nodes,
+        edges: sourceWorkflow.edges,
         category: template.category,
       });
 
@@ -552,24 +797,10 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  // GitHub integration routes
-  app.get('/api/github/status', isAuthenticated, async (req: AuthRequest, res) => {
+  // GitHub integration routes (using per-user OAuth)
+  app.get('/api/github/repos', isAuthenticated, withGitHubAuth, async (req: GitHubAuthRequest, res) => {
     try {
-      const userId = getUserId(req);
-      const { isGitHubConnected } = await import('./github.js');
-      const connected = await isGitHubConnected(userId);
-      res.json({ connected });
-    } catch (error: any) {
-      res.json({ connected: false, error: error.message });
-    }
-  });
-
-  app.get('/api/github/repos', isAuthenticated, async (req: AuthRequest, res) => {
-    try {
-      const userId = getUserId(req);
-      const { getGitHubClient } = await import('./github.js');
-      const octokit = await getGitHubClient(userId);
-      const { data } = await octokit.repos.listForAuthenticatedUser({
+      const { data } = await req.octokit!.repos.listForAuthenticatedUser({
         sort: 'updated',
         per_page: 100
       });
@@ -579,13 +810,10 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.post('/api/github/repos', isAuthenticated, async (req: AuthRequest, res) => {
+  app.post('/api/github/repos', isAuthenticated, withGitHubAuth, async (req: GitHubAuthRequest, res) => {
     try {
-      const userId = getUserId(req);
       const { name, description, private: isPrivate } = req.body;
-      const { getGitHubClient } = await import('./github.js');
-      const octokit = await getGitHubClient(userId);
-      const { data } = await octokit.repos.createForAuthenticatedUser({
+      const { data } = await req.octokit!.repos.createForAuthenticatedUser({
         name,
         description: description || '',
         private: isPrivate || false,
@@ -597,14 +825,11 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.get('/api/github/repos/:owner/:repo/contents', isAuthenticated, async (req: AuthRequest, res) => {
+  app.get('/api/github/repos/:owner/:repo/contents', isAuthenticated, withGitHubAuth, async (req: GitHubAuthRequest, res) => {
     try {
-      const userId = getUserId(req);
       const { owner, repo } = req.params;
       const { path } = req.query;
-      const { getGitHubClient } = await import('./github.js');
-      const octokit = await getGitHubClient(userId);
-      const { data } = await octokit.repos.getContent({
+      const { data } = await req.octokit!.repos.getContent({
         owner,
         repo,
         path: (path as string) || ''
@@ -720,6 +945,213 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
       }
       
       res.status(500).json({ error: error.message || 'Failed to process message' });
+    }
+  });
+
+  // Settings routes
+  app.get('/api/settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      
+      // Return user settings (without sensitive data)
+      res.json({
+        defaultProvider: user.defaultProvider,
+        defaultModel: user.defaultModel,
+        theme: user.theme,
+        emailNotifications: user.emailNotifications,
+        inAppNotifications: user.inAppNotifications,
+        executionTimeout: user.executionTimeout,
+        autoSaveInterval: user.autoSaveInterval,
+        hasOpenAIKey: !!user.openaiApiKey,
+        hasAnthropicKey: !!user.anthropicApiKey,
+        hasGeminiKey: !!user.geminiApiKey,
+        githubConnected: !!user.githubAccessToken && !isGitHubTokenExpired(user),
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch('/api/settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      
+      const updateSettingsSchema = z.object({
+        defaultProvider: z.enum(['openai', 'anthropic', 'gemini']).optional(),
+        defaultModel: z.string().optional(),
+        theme: z.enum(['light', 'dark', 'system']).optional(),
+        emailNotifications: z.boolean().optional(),
+        inAppNotifications: z.boolean().optional(),
+        executionTimeout: z.number().int().min(30).max(3600).optional(),
+        autoSaveInterval: z.number().int().min(10).max(300).optional(),
+      }).strict();
+      
+      const validated = updateSettingsSchema.parse(req.body);
+      
+      await storage.updateUser(userId, validated);
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ error: 'Invalid input', details: error.errors });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // API Keys management
+  app.post('/api/settings/api-keys', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      
+      const apiKeysSchema = z.object({
+        provider: z.enum(['openai', 'anthropic', 'gemini']),
+        apiKey: z.string().min(1),
+      });
+      
+      const { provider, apiKey } = apiKeysSchema.parse(req.body);
+      
+      // Encrypt the API key
+      const encryptedKey = encrypt(apiKey);
+      
+      // Store encrypted key
+      const updateData: any = {};
+      if (provider === 'openai') {
+        updateData.openaiApiKey = encryptedKey;
+      } else if (provider === 'anthropic') {
+        updateData.anthropicApiKey = encryptedKey;
+      } else if (provider === 'gemini') {
+        updateData.geminiApiKey = encryptedKey;
+      }
+      
+      await storage.updateUser(userId, updateData);
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ error: 'Invalid input', details: error.errors });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete('/api/settings/api-keys/:provider', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const { provider } = req.params;
+      
+      if (!['openai', 'anthropic', 'gemini'].includes(provider)) {
+        return res.status(400).json({ error: 'Invalid provider' });
+      }
+      
+      const updateData: any = {};
+      if (provider === 'openai') {
+        updateData.openaiApiKey = null;
+      } else if (provider === 'anthropic') {
+        updateData.anthropicApiKey = null;
+      } else if (provider === 'gemini') {
+        updateData.geminiApiKey = null;
+      }
+      
+      await storage.updateUser(userId, updateData);
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Test API key
+  app.post('/api/settings/test-api-key', isAuthenticated, async (req: any, res) => {
+    try {
+      const testSchema = z.object({
+        provider: z.enum(['openai', 'anthropic', 'gemini']),
+        apiKey: z.string().min(1),
+      });
+      
+      const { provider, apiKey } = testSchema.parse(req.body);
+      
+      // Test the API key by making a simple request
+      if (provider === 'openai') {
+        const { OpenAI } = await import('openai');
+        const client = new OpenAI({ apiKey });
+        await client.models.list();
+      } else if (provider === 'anthropic') {
+        const { Anthropic } = await import('@anthropic-ai/sdk');
+        const client = new Anthropic({ apiKey });
+        // Just create client - Anthropic doesn't have a simple test endpoint
+      } else if (provider === 'gemini') {
+        const { GoogleGenAI } = await import('@google/genai');
+        const client = new GoogleGenAI({ apiKey });
+        // Just create client - Gemini validation happens on first use
+      }
+      
+      res.json({ success: true, valid: true });
+    } catch (error: any) {
+      res.status(400).json({ 
+        success: false, 
+        valid: false,
+        error: error.message || 'API key validation failed'
+      });
+    }
+  });
+
+  // Danger zone actions
+  app.delete('/api/settings/workflows', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflows = await storage.getWorkflowsByUserId(userId);
+      
+      for (const workflow of workflows) {
+        await storage.deleteWorkflow(workflow.id);
+      }
+      
+      res.json({ success: true, deleted: workflows.length });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete('/api/settings/executions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const executions = await storage.getExecutionsByUserId(userId);
+      
+      // Note: Executions will be cascade deleted when workflows are deleted
+      // This endpoint is for explicitly deleting just executions
+      
+      res.json({ success: true, deleted: executions.length });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/settings/export', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      
+      // Export all user data
+      const [workflows, executions] = await Promise.all([
+        storage.getWorkflowsByUserId(userId),
+        storage.getExecutionsByUserId(userId),
+      ]);
+      
+      const exportData = {
+        exportedAt: new Date().toISOString(),
+        workflows,
+        executions,
+      };
+      
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="swarm-data-${userId}-${Date.now()}.json"`);
+      res.json(exportData);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 }
