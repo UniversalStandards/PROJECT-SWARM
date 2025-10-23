@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { useParams } from 'wouter';
+import { useParams, Link } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, CheckCircle2, XCircle, Clock, ArrowRight } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, Clock, ArrowRight, ExternalLink } from 'lucide-react';
 import type { Execution, ExecutionLog, AgentMessage } from '@shared/schema';
 
 export default function ExecutionMonitor() {
@@ -57,10 +58,18 @@ export default function ExecutionMonitor() {
           <h1 className="text-3xl font-bold mb-2">Execution Monitor</h1>
           <p className="text-muted-foreground">Execution ID: {execution.id}</p>
         </div>
-        <Badge className={`gap-2 ${config.bg} ${config.color} border-0`} data-testid="badge-execution-status">
-          <StatusIcon className={`w-4 h-4 ${execution.status === 'running' ? 'animate-spin' : ''}`} />
-          {execution.status.toUpperCase()}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Link href={`/app/executions/${execution.id}/detail`}>
+            <Button variant="outline" size="sm">
+              <ExternalLink className="w-4 h-4 mr-2" />
+              Detailed View
+            </Button>
+          </Link>
+          <Badge className={`gap-2 ${config.bg} ${config.color} border-0`} data-testid="badge-execution-status">
+            <StatusIcon className={`w-4 h-4 ${execution.status === 'running' ? 'animate-spin' : ''}`} />
+            {execution.status.toUpperCase()}
+          </Badge>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 overflow-hidden">
