@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Bot, User, Send, Sparkles, Loader2 } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -109,8 +110,21 @@ export default function AppAssistant() {
 
       <Card className="flex-1 flex flex-col overflow-hidden">
         {isLoading ? (
-          <div className="flex-1 flex items-center justify-center">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <div className="flex-1 p-6 space-y-4">
+            <div className="flex gap-3">
+              <Skeleton className="w-10 h-10 rounded-full" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-1/4" />
+                <Skeleton className="h-20 w-full" />
+              </div>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <div className="flex-1 space-y-2 max-w-md">
+                <Skeleton className="h-4 w-1/4 ml-auto" />
+                <Skeleton className="h-16 w-full" />
+              </div>
+              <Skeleton className="w-10 h-10 rounded-full" />
+            </div>
           </div>
         ) : messages.length === 0 ? (
           <div className="flex-1 flex items-center justify-center p-8">

@@ -293,6 +293,18 @@ export default function WorkflowBuilder() {
     setShowExecutionDialog(false);
   };
 
+  // Show loading state when fetching workflow
+  if (workflowId && isLoading) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-muted-foreground">Loading workflow...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen w-full flex flex-col">
       <header className="flex items-center justify-between px-6 py-3 border-b bg-card">
