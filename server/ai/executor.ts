@@ -15,12 +15,33 @@ interface ExecutionResult {
   content: string;
   tokenCount: number;
   finishReason: string;
+  promptTokens?: number;
+  completionTokens?: number;
+  costUsd?: number;
 }
 
 export class AIExecutor {
   private openai: OpenAI;
   private anthropic: Anthropic;
   private gemini: GoogleGenAI;
+
+  // Pricing in USD per 1M tokens (as of 2025)
+  private pricing: Record<string, { prompt: number; completion: number }> = {
+    // OpenAI
+    'gpt-4': { prompt: 30, completion: 60 },
+    'gpt-4-turbo': { prompt: 10, completion: 30 },
+    'gpt-4o': { prompt: 5, completion: 15 },
+    'gpt-4o-mini': { prompt: 0.15, completion: 0.6 },
+    'gpt-3.5-turbo': { prompt: 0.5, completion: 1.5 },
+    // Anthropic
+    'claude-3-5-sonnet-20241022': { prompt: 3, completion: 15 },
+    'claude-3-opus': { prompt: 15, completion: 75 },
+    'claude-3-sonnet': { prompt: 3, completion: 15 },
+    'claude-3-haiku': { prompt: 0.25, completion: 1.25 },
+    // Gemini
+    'gemini-1.5-pro': { prompt: 1.25, completion: 5 },
+    'gemini-1.5-flash': { prompt: 0.075, completion: 0.3 },
+  };
 
   constructor() {
     this.openai = new OpenAI({
@@ -32,6 +53,14 @@ export class AIExecutor {
     });
 
     this.gemini = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+  }
+
+  private calculateCost(model: string, promptTokens: number, completionTokens: number): number {
+    const pricing = this.pricing[model] || { prompt: 0, completion: 0 };
+    const promptCost = (promptTokens / 1000000) * pricing.prompt;
+    const completionCost = (completionTokens / 1000000) * pricing.completion;
+    // Return cost in micro-cents (1/1000000 of dollar)
+    return Math.round((promptCost + completionCost) * 1000000);
   }
 
   async executeAgent(agent: Agent, context: ExecutionContext): Promise<ExecutionResult> {
@@ -122,11 +151,16 @@ export class AIExecutor {
     });
 
     const choice = response.choices[0];
+    const promptTokens = response.usage?.prompt_tokens || 0;
+    const completionTokens = response.usage?.completion_tokens || 0;
     
     return {
       content: choice.message.content || '',
       tokenCount: response.usage?.total_tokens || 0,
       finishReason: choice.finish_reason,
+      promptTokens,
+      completionTokens,
+      costUsd: this.calculateCost(modelToUse, promptTokens, completionTokens),
     };
   }
 
@@ -153,12 +187,17 @@ export class AIExecutor {
     });
 
     const content = response.content[0];
-    const tokenCount = response.usage.input_tokens + response.usage.output_tokens;
+    const promptTokens = response.usage.input_tokens;
+    const completionTokens = response.usage.output_tokens;
+    const tokenCount = promptTokens + completionTokens;
 
     return {
       content: content.type === 'text' ? content.text : '',
       tokenCount,
       finishReason: response.stop_reason || 'end_turn',
+      promptTokens,
+      completionTokens,
+      costUsd: this.calculateCost(modelToUse, promptTokens, completionTokens),
     };
   }
 
@@ -191,10 +230,17 @@ export class AIExecutor {
     const result = await chat.sendMessage(lastMessage.content);
     const response = result.response;
 
+    // Estimate token counts for Gemini (rough estimation)
+    const promptTokens = Math.ceil(enhancedSystemPrompt.length / 4);
+    const completionTokens = Math.ceil(response.text().length / 4);
+
     return {
       content: response.text(),
-      tokenCount: 0, // Gemini doesn't provide token counts in the same way
+      tokenCount: promptTokens + completionTokens,
       finishReason: 'stop',
+      promptTokens,
+      completionTokens,
+      costUsd: this.calculateCost(modelToUse, promptTokens, completionTokens),
     };
   }
 }

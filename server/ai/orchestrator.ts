@@ -119,6 +119,20 @@ export class WorkflowOrchestrator {
           tokenCount: result.tokenCount,
         });
 
+        // Track execution costs
+        if (result.promptTokens !== undefined && result.completionTokens !== undefined && result.costUsd !== undefined) {
+          await storage.createExecutionCost({
+            executionId: execution.id,
+            agentId: agent.id,
+            provider: agent.provider,
+            model: agent.model,
+            promptTokens: result.promptTokens,
+            completionTokens: result.completionTokens,
+            totalTokens: result.tokenCount,
+            costUsd: result.costUsd,
+          });
+        }
+
         // Extract and store new knowledge from agent response
         await this.extractAndStoreKnowledge(
           workflow.userId,
