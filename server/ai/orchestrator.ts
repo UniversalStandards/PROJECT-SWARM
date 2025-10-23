@@ -1,6 +1,8 @@
 import type { Workflow, Agent, Execution } from '@shared/schema';
 import { storage } from '../storage';
 import { aiExecutor } from './executor';
+import { costTracker } from '../lib/cost-tracker';
+import { versionManager } from '../lib/workflow-version';
 
 interface WorkflowNode {
   id: string;
@@ -111,6 +113,28 @@ export class WorkflowOrchestrator {
           knowledgeContext: relevantKnowledge,
         });
 
+        // Track cost for this execution
+        const providerUsed = result.provider || agent.provider;
+        const modelUsed = result.model || agent.model;
+        if (result.tokenCount > 0) {
+          try {
+            await costTracker.trackExecutionCost(
+              execution.id,
+              agent.id,
+              providerUsed,
+              modelUsed,
+              {
+                inputTokens: Math.round(result.tokenCount * 0.4), // Rough estimate
+                outputTokens: Math.round(result.tokenCount * 0.6),
+                totalTokens: result.tokenCount,
+              }
+            );
+          } catch (costError: any) {
+            console.error('Error tracking cost:', costError);
+            // Don't fail execution if cost tracking fails
+          }
+        }
+
         await storage.createAgentMessage({
           executionId: execution.id,
           agentId: agent.id,
@@ -118,6 +142,16 @@ export class WorkflowOrchestrator {
           content: result.content,
           tokenCount: result.tokenCount,
         });
+
+        // Log if fallback was used
+        if (result.fallbackUsed) {
+          await this.logExecution(
+            execution.id,
+            'info',
+            `Fallback used: switched from ${agent.provider} to ${providerUsed}`,
+            agent.id
+          );
+        }
 
         // Extract and store new knowledge from agent response
         await this.extractAndStoreKnowledge(
@@ -146,16 +180,31 @@ export class WorkflowOrchestrator {
         output: { result: finalResult?.content || '' },
       });
 
+      // Update version statistics
+      try {
+        await versionManager.updateVersionStats(workflowId, true, duration);
+      } catch (versionError: any) {
+        console.error('Error updating version stats:', versionError);
+      }
+
       await this.logExecution(execution.id, 'info', 'Workflow execution completed');
 
       return completedExecution!;
     } catch (error: any) {
       const errorMessage = error.message || 'Unknown error occurred';
       try {
+        const duration = Date.now() - new Date(execution.startedAt).getTime();
         await storage.updateExecution(execution.id, {
           status: 'error',
           error: errorMessage,
         });
+
+        // Update version statistics with failure
+        try {
+          await versionManager.updateVersionStats(workflowId, false, duration);
+        } catch (versionError: any) {
+          console.error('Error updating version stats:', versionError);
+        }
 
         await this.logExecution(
           execution.id,
