@@ -16,6 +16,16 @@ interface TimelineResponse {
   totalSteps: number;
 }
 
+const formatOutput = (data: any): string => {
+  if (typeof data === 'string') return data;
+  if (data === null || data === undefined) return '';
+  try {
+    return JSON.stringify(data, null, 2);
+  } catch {
+    return String(data);
+  }
+};
+
 export default function AppExecutionDetail() {
   const { id } = useParams<{ id: string }>();
 
@@ -143,9 +153,7 @@ export default function AppExecutionDetail() {
               <div className="bg-muted rounded-lg p-4">
                 <h3 className="text-sm font-medium mb-2">Output</h3>
                 <pre className="text-sm whitespace-pre-wrap break-words">
-                  {typeof execution.output === 'string' 
-                    ? execution.output 
-                    : JSON.stringify(execution.output, null, 2)}
+                  {formatOutput(execution.output)}
                 </pre>
               </div>
             )}
@@ -154,9 +162,7 @@ export default function AppExecutionDetail() {
               <div className="bg-muted rounded-lg p-4">
                 <h3 className="text-sm font-medium mb-2">Input</h3>
                 <pre className="text-sm whitespace-pre-wrap break-words">
-                  {typeof execution.input === 'string' 
-                    ? execution.input 
-                    : JSON.stringify(execution.input, null, 2)}
+                  {formatOutput(execution.input)}
                 </pre>
               </div>
             )}
