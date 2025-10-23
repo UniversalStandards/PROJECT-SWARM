@@ -1,6 +1,7 @@
 import type { Workflow, Agent, Execution } from '@shared/schema';
 import { storage } from '../storage';
 import { aiExecutor } from './executor';
+import { wsManager } from '../websocket';
 
 interface WorkflowNode {
   id: string;
@@ -32,6 +33,9 @@ export class WorkflowOrchestrator {
     });
 
     try {
+      // Emit execution started event
+      wsManager.emitExecutionStarted(execution.id, workflow.name);
+      
       await this.logExecution(execution.id, 'info', 'Workflow execution started');
       await this.logExecution(execution.id, 'info', `Fetched ${agents.length} agents from database`);
       
@@ -49,6 +53,9 @@ export class WorkflowOrchestrator {
         const agent = agentMap.get(nodeId);
         
         if (!node || !agent) continue;
+
+        // Emit agent started event
+        wsManager.emitAgentStarted(execution.id, agent.id, agent.name);
 
         await this.logExecution(
           execution.id, 
@@ -119,6 +126,9 @@ export class WorkflowOrchestrator {
           tokenCount: result.tokenCount,
         });
 
+        // Emit agent message
+        wsManager.emitMessage(execution.id, agent.id, agent.name, 'assistant', result.content);
+
         // Extract and store new knowledge from agent response
         await this.extractAndStoreKnowledge(
           workflow.userId,
@@ -128,6 +138,9 @@ export class WorkflowOrchestrator {
         );
 
         nodeResults.set(nodeId, result);
+
+        // Emit agent completed event
+        wsManager.emitAgentCompleted(execution.id, agent.id, agent.name, result);
 
         await this.logExecution(
           execution.id,
@@ -148,6 +161,9 @@ export class WorkflowOrchestrator {
 
       await this.logExecution(execution.id, 'info', 'Workflow execution completed');
 
+      // Emit execution completed event
+      wsManager.emitExecutionCompleted(execution.id, { result: finalResult?.content || '' });
+
       return completedExecution!;
     } catch (error: any) {
       const errorMessage = error.message || 'Unknown error occurred';
@@ -162,6 +178,9 @@ export class WorkflowOrchestrator {
           'error',
           `Workflow execution failed: ${errorMessage}`
         );
+
+        // Emit execution failed event
+        wsManager.emitExecutionFailed(execution.id, errorMessage);
       } catch (updateError: any) {
         console.error('Failed to update execution with error status:', updateError);
       }
@@ -337,6 +356,9 @@ export class WorkflowOrchestrator {
       level,
       message,
     });
+
+    // Emit log via WebSocket
+    wsManager.emitLog(executionId, level, message, agentId);
   }
 }
 
