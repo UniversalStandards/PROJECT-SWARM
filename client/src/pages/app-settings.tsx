@@ -246,9 +246,9 @@ export default function AppSettings() {
               <div>
                 <div className="font-medium">GitHub Account</div>
                 <div className="text-sm text-muted-foreground mt-1">
-                  {githubStatus?.connected ? (
+                  {(githubStatus as any)?.connected ? (
                     <span className="flex items-center gap-2 text-green-600">
-                      <Check className="w-4 h-4" /> Connected {githubStatus.tokenPreview && `(${githubStatus.tokenPreview})`}
+                      <Check className="w-4 h-4" /> Connected {(githubStatus as any).tokenPreview && `(${(githubStatus as any).tokenPreview})`}
                     </span>
                   ) : (
                     <span className="flex items-center gap-2 text-muted-foreground">
@@ -257,7 +257,7 @@ export default function AppSettings() {
                   )}
                 </div>
               </div>
-              {githubStatus?.connected ? (
+              {(githubStatus as any)?.connected ? (
                 <Button
                   variant="outline"
                   size="sm"
@@ -298,7 +298,7 @@ export default function AppSettings() {
                     <Input
                       id={`${provider}-key`}
                       type={showKeys[provider] ? 'text' : 'password'}
-                      placeholder={settings?.[`has${provider.charAt(0).toUpperCase() + provider.slice(1)}Key`] ? '••••••••••••••••' : 'Enter API key'}
+                      placeholder={(settings as any)?.[`has${provider.charAt(0).toUpperCase() + provider.slice(1)}Key`] ? '••••••••••••••••' : 'Enter API key'}
                       value={apiKeys[provider]}
                       onChange={(e) => setApiKeys({ ...apiKeys, [provider]: e.target.value })}
                     />
@@ -344,7 +344,7 @@ export default function AppSettings() {
             <div className="space-y-2">
               <Label htmlFor="default-provider">Default AI Provider</Label>
               <Select
-                value={settings?.defaultProvider || 'openai'}
+                value={(settings as any)?.defaultProvider || 'openai'}
                 onValueChange={(value) => updateSettingsMutation.mutate({ defaultProvider: value })}
               >
                 <SelectTrigger id="default-provider">
@@ -361,7 +361,7 @@ export default function AppSettings() {
             <div className="space-y-2">
               <Label htmlFor="theme">Theme</Label>
               <Select
-                value={settings?.theme || 'system'}
+                value={(settings as any)?.theme || 'system'}
                 onValueChange={(value) => updateSettingsMutation.mutate({ theme: value })}
               >
                 <SelectTrigger id="theme">
@@ -381,7 +381,7 @@ export default function AppSettings() {
                 <div className="text-sm text-muted-foreground">Receive email updates about your workflows</div>
               </div>
               <Switch
-                checked={settings?.emailNotifications ?? true}
+                checked={(settings as any)?.emailNotifications ?? true}
                 onCheckedChange={(checked) => updateSettingsMutation.mutate({ emailNotifications: checked })}
               />
             </div>
@@ -392,7 +392,7 @@ export default function AppSettings() {
                 <div className="text-sm text-muted-foreground">Show notifications in the app</div>
               </div>
               <Switch
-                checked={settings?.inAppNotifications ?? true}
+                checked={(settings as any)?.inAppNotifications ?? true}
                 onCheckedChange={(checked) => updateSettingsMutation.mutate({ inAppNotifications: checked })}
               />
             </div>
@@ -404,7 +404,7 @@ export default function AppSettings() {
                 type="number"
                 min={30}
                 max={3600}
-                value={settings?.executionTimeout || 300}
+                value={(settings as any)?.executionTimeout || 300}
                 onChange={(e) => {
                   const value = parseInt(e.target.value);
                   if (value >= 30 && value <= 3600) {
@@ -421,7 +421,7 @@ export default function AppSettings() {
                 type="number"
                 min={10}
                 max={300}
-                value={settings?.autoSaveInterval || 30}
+                value={(settings as any)?.autoSaveInterval || 30}
                 onChange={(e) => {
                   const value = parseInt(e.target.value);
                   if (value >= 10 && value <= 300) {
