@@ -5,6 +5,9 @@ import { orchestrator } from "./ai/orchestrator";
 import { z } from "zod";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import type { Request } from "express";
+import { workflowValidator, workflowExportSchema } from "./lib/workflow-validator";
+import { webhookHandler } from "./webhooks";
+import crypto from "crypto";
 
 // Execution request schema - only workflowId and input are needed from client
 const executeWorkflowSchema = insertExecutionSchema.pick({ workflowId: true, input: true });
@@ -720,6 +723,651 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
       }
       
       res.status(500).json({ error: error.message || 'Failed to process message' });
+    }
+  });
+
+  // ==================== PHASE 3A ROUTES ====================
+
+  // Workflow Versioning
+  app.post("/api/workflows/:id/versions", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      // Get current version number
+      const versions = await storage.getWorkflowVersions(req.params.id);
+      const nextVersion = versions.length > 0 ? Math.max(...versions.map(v => v.version)) + 1 : 1;
+
+      const { commitMessage } = req.body;
+
+      const version = await storage.createWorkflowVersion({
+        workflowId: req.params.id,
+        version: nextVersion,
+        data: {
+          nodes: workflow.nodes,
+          edges: workflow.edges,
+          name: workflow.name,
+          description: workflow.description,
+          category: workflow.category,
+        },
+        commitMessage: commitMessage || `Version ${nextVersion}`,
+        userId,
+        isActive: false,
+      });
+
+      res.json(version);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/workflows/:id/versions", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      const versions = await storage.getWorkflowVersions(req.params.id);
+      res.json(versions);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/workflows/:id/versions/:versionId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      const version = await storage.getWorkflowVersionById(req.params.versionId);
+      if (!version || version.workflowId !== req.params.id) {
+        return res.status(404).json({ error: "Version not found" });
+      }
+
+      res.json(version);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/workflows/:id/versions/:versionId/restore", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      const version = await storage.getWorkflowVersionById(req.params.versionId);
+      if (!version || version.workflowId !== req.params.id) {
+        return res.status(404).json({ error: "Version not found" });
+      }
+
+      // Restore workflow from version data
+      const versionData = version.data as any;
+      await storage.updateWorkflow(req.params.id, {
+        nodes: versionData.nodes,
+        edges: versionData.edges,
+        name: versionData.name,
+        description: versionData.description,
+        category: versionData.category,
+      });
+
+      // Sync agents
+      await syncAgentsFromNodes(req.params.id, versionData.nodes);
+
+      // Set as active version
+      await storage.setActiveVersion(req.params.id, req.params.versionId);
+
+      const updated = await storage.getWorkflowById(req.params.id);
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Workflow Export/Import
+  app.get("/api/workflows/:id/export", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      const agents = await storage.getAgentsByWorkflowId(req.params.id);
+      const schema = await storage.getWorkflowSchema(req.params.id);
+      const user = await storage.getUser(userId);
+
+      const exportData = {
+        version: '1.0',
+        metadata: {
+          name: workflow.name,
+          description: workflow.description || '',
+          category: workflow.category || '',
+          author: user?.email || 'Unknown',
+          createdAt: workflow.createdAt.toISOString(),
+          updatedAt: workflow.updatedAt.toISOString(),
+          exportedAt: new Date().toISOString(),
+        },
+        workflow: {
+          nodes: workflow.nodes,
+          edges: workflow.edges,
+        },
+        agents: agents.map(agent => ({
+          name: agent.name,
+          role: agent.role,
+          description: agent.description || '',
+          provider: agent.provider,
+          model: agent.model,
+          systemPrompt: agent.systemPrompt,
+          temperature: agent.temperature,
+          maxTokens: agent.maxTokens,
+          capabilities: agent.capabilities,
+          nodeId: agent.nodeId,
+          position: agent.position,
+        })),
+        inputSchema: schema?.inputSchema || {},
+        outputSchema: schema?.outputSchema || {},
+      };
+
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="${workflow.name.replace(/[^a-z0-9]/gi, '_')}_export.json"`);
+      res.json(exportData);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/workflows/import", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const { workflowData, mode } = req.body;
+
+      // Validate import data
+      const validation = workflowValidator.validateExport(workflowData);
+      if (!validation.valid) {
+        return res.status(400).json({ error: 'Invalid workflow data', details: validation.errors });
+      }
+
+      const data = validation.data!;
+
+      // Check for duplicate IDs if merging
+      if (mode === 'merge') {
+        const duplicates = workflowValidator.checkDuplicateIds(data.workflow.nodes);
+        if (duplicates.length > 0) {
+          return res.status(400).json({ 
+            error: 'Duplicate node IDs found', 
+            details: duplicates 
+          });
+        }
+      }
+
+      // Generate unique IDs if creating new workflow
+      let nodes = data.workflow.nodes;
+      let edges = data.workflow.edges;
+      
+      if (mode === 'new' || mode === 'replace') {
+        const uniqueIds = workflowValidator.generateUniqueIds(nodes, edges);
+        nodes = uniqueIds.nodes;
+        edges = uniqueIds.edges;
+      }
+
+      // Validate workflow structure
+      const structureValidation = workflowValidator.validateWorkflowStructure(nodes, edges);
+      if (!structureValidation.valid) {
+        return res.status(400).json({ 
+          error: 'Invalid workflow structure', 
+          warnings: structureValidation.errors 
+        });
+      }
+
+      // Create or update workflow
+      const workflow = await storage.createWorkflow({
+        userId,
+        name: `${data.metadata.name} (Imported)`,
+        description: data.metadata.description || '',
+        nodes,
+        edges,
+        category: data.metadata.category || null,
+      });
+
+      // Create agents
+      await syncAgentsFromNodes(workflow.id, nodes);
+
+      // Import schemas if provided
+      if (data.inputSchema || data.outputSchema) {
+        await storage.createWorkflowSchema({
+          workflowId: workflow.id,
+          inputSchema: data.inputSchema || {},
+          outputSchema: data.outputSchema || {},
+        });
+      }
+
+      res.json(workflow);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Workflow Schedules
+  app.post("/api/workflows/:id/schedules", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      const { cronExpression, timezone, enabled } = req.body;
+
+      const schedule = await storage.createWorkflowSchedule({
+        workflowId: req.params.id,
+        cronExpression,
+        timezone: timezone || 'UTC',
+        enabled: enabled !== undefined ? enabled : true,
+        lastRun: null,
+        nextRun: null,
+      });
+
+      res.json(schedule);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/workflows/:id/schedules", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      const schedules = await storage.getWorkflowSchedules(req.params.id);
+      res.json(schedules);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/workflows/:id/schedules/:scheduleId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      const schedule = await storage.getWorkflowScheduleById(req.params.scheduleId);
+      if (!schedule || schedule.workflowId !== req.params.id) {
+        return res.status(404).json({ error: "Schedule not found" });
+      }
+
+      const { cronExpression, timezone, enabled } = req.body;
+      const updated = await storage.updateWorkflowSchedule(req.params.scheduleId, {
+        cronExpression,
+        timezone,
+        enabled,
+      });
+
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/workflows/:id/schedules/:scheduleId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      await storage.deleteWorkflowSchedule(req.params.scheduleId);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Workflow Webhooks
+  app.post("/api/workflows/:id/webhooks", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      const url = webhookHandler.generateWebhookUrl();
+      const secret = webhookHandler.generateWebhookSecret();
+
+      const webhook = await storage.createWorkflowWebhook({
+        workflowId: req.params.id,
+        url,
+        secret,
+        enabled: true,
+      });
+
+      res.json(webhook);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/workflows/:id/webhooks", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      const webhooks = await storage.getWorkflowWebhooks(req.params.id);
+      res.json(webhooks);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/workflows/:id/webhooks/:webhookId/regenerate-secret", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      const webhook = await storage.getWorkflowWebhookById(req.params.webhookId);
+      if (!webhook || webhook.workflowId !== req.params.id) {
+        return res.status(404).json({ error: "Webhook not found" });
+      }
+
+      const newSecret = webhookHandler.generateWebhookSecret();
+      const updated = await storage.updateWorkflowWebhook(req.params.webhookId, {
+        secret: newSecret,
+      });
+
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/workflows/:id/webhooks/:webhookId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      await storage.deleteWorkflowWebhook(req.params.webhookId);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/workflows/:id/webhooks/:webhookId/logs", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      const webhook = await storage.getWorkflowWebhookById(req.params.webhookId);
+      if (!webhook || webhook.workflowId !== req.params.id) {
+        return res.status(404).json({ error: "Webhook not found" });
+      }
+
+      const logs = await storage.getWebhookLogs(req.params.webhookId);
+      res.json(logs);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Public webhook endpoint (no authentication required)
+  app.post("/webhooks/:webhookUrl", async (req, res) => {
+    try {
+      const signature = req.headers['x-webhook-signature'] as string;
+      const result = await webhookHandler.processWebhook(
+        req.params.webhookUrl,
+        req.body,
+        req.headers as Record<string, string>,
+        signature
+      );
+
+      if (result.success) {
+        res.json({ success: true, executionId: result.executionId });
+      } else {
+        res.status(400).json({ success: false, error: result.error });
+      }
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Workflow Schemas
+  app.post("/api/workflows/:id/schema", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      const { inputSchema, outputSchema } = req.body;
+
+      // Check if schema already exists
+      const existing = await storage.getWorkflowSchema(req.params.id);
+      
+      if (existing) {
+        const updated = await storage.updateWorkflowSchema(req.params.id, {
+          inputSchema,
+          outputSchema,
+        });
+        return res.json(updated);
+      }
+
+      const schema = await storage.createWorkflowSchema({
+        workflowId: req.params.id,
+        inputSchema,
+        outputSchema,
+      });
+
+      res.json(schema);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/workflows/:id/schema", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      const schema = await storage.getWorkflowSchema(req.params.id);
+      res.json(schema || { inputSchema: {}, outputSchema: {} });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Cost Analytics
+  app.get("/api/analytics/costs", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const { workflowId, startDate, endDate } = req.query;
+
+      let costs;
+      if (workflowId) {
+        // Verify workflow ownership
+        const workflow = await storage.getWorkflowById(workflowId as string);
+        if (!workflow || workflow.userId !== userId) {
+          return res.status(403).json({ error: "Forbidden" });
+        }
+        costs = await storage.getWorkflowCosts(
+          workflowId as string,
+          startDate ? new Date(startDate as string) : undefined,
+          endDate ? new Date(endDate as string) : undefined
+        );
+      } else {
+        costs = await storage.getUserCosts(
+          userId,
+          startDate ? new Date(startDate as string) : undefined,
+          endDate ? new Date(endDate as string) : undefined
+        );
+      }
+
+      // Aggregate costs
+      const totalCost = costs.reduce((sum, cost) => sum + cost.costUsd, 0);
+      const totalTokens = costs.reduce((sum, cost) => sum + cost.totalTokens, 0);
+      
+      const byProvider = costs.reduce((acc: any, cost) => {
+        if (!acc[cost.provider]) {
+          acc[cost.provider] = { cost: 0, tokens: 0, count: 0 };
+        }
+        acc[cost.provider].cost += cost.costUsd;
+        acc[cost.provider].tokens += cost.totalTokens;
+        acc[cost.provider].count += 1;
+        return acc;
+      }, {});
+
+      res.json({
+        totalCost: totalCost / 1000000, // Convert micro-cents to dollars
+        totalTokens,
+        byProvider,
+        details: costs,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Tags
+  app.get("/api/tags", isAuthenticated, async (req: any, res) => {
+    try {
+      const tags = await storage.getAllTags();
+      res.json(tags);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/tags", isAuthenticated, async (req: any, res) => {
+    try {
+      const { name, color } = req.body;
+
+      // Check if tag already exists
+      const existing = await storage.getTagByName(name);
+      if (existing) {
+        return res.status(400).json({ error: "Tag already exists" });
+      }
+
+      const tag = await storage.createTag({
+        name,
+        color: color || '#3b82f6',
+      });
+
+      res.json(tag);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/tags/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      await storage.deleteTag(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/workflows/:id/tags", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      const { tagId } = req.body;
+      await storage.addWorkflowTag({
+        workflowId: req.params.id,
+        tagId,
+      });
+
+      const tags = await storage.getWorkflowTags(req.params.id);
+      res.json(tags);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/workflows/:id/tags/:tagId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      await storage.removeWorkflowTag(req.params.id, req.params.tagId);
+      const tags = await storage.getWorkflowTags(req.params.id);
+      res.json(tags);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/workflows/:id/tags", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      const tags = await storage.getWorkflowTags(req.params.id);
+      res.json(tags);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 }

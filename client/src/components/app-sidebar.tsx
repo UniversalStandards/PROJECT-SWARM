@@ -18,6 +18,7 @@ import {
   Settings,
   Bot,
   Sparkles,
+  BarChart3,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
@@ -37,6 +38,11 @@ const menuItems = [
     title: "Templates",
     url: "/app/templates",
     icon: LayoutTemplate,
+  },
+  {
+    title: "Analytics",
+    url: "/app/analytics",
+    icon: BarChart3,
   },
   {
     title: "AI Assistant",
