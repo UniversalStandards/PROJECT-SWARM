@@ -43,12 +43,12 @@
 
 | Item | Status | Priority | Description | Technical Notes | 🆕 New | 👤 Assigned | 🔧 Being Worked | 🚫 Stuck | ✅ Complete |
 |------|--------|----------|-------------|-----------------|--------|-------------|-----------------|----------|-------------|
-| **Workflow Builder UX** | ⚠️ Basic | 🟡 Medium | No auto-layout, manual positioning only, limited visual feedback | Add: smart positioning, connection validation, minimap | ☑️ | ☐ @_________ | ☐ | ☐ | ☐ |
+| **Workflow Builder UX** | ✅ Enhanced | 🟡 Medium | Auto-layout algorithms, grid snapping, minimap, connection validation, enhanced toolbar | Implemented: hierarchical/force/grid layouts, snap to grid, minimap, toolbar with shortcuts | ☑️ | ☑️ @UniversalStandards | ☑️ | ☐ | ☑️ |
 | **Error Handling** | ⚠️ Basic | 🔴 High | Generic error messages, no detailed validation feedback | Need: field-level validation, better error boundaries, retry logic | ☑️ | ☑️ @UniversalStandards | ☑️ | ☐ | ☐ |
 | **Loading States** | ⚠️ Inconsistent | ⚪ Low | Some components lack loading indicators | Add skeletons/spinners across all async operations | ☑️ | ☐ @_________ | ☐ | ☐ | ☐ |
 | **Agent Configuration Panel** | ⚠️ Limited | 🟡 Medium | Only shows basic fields (name, provider, model) | Expose: temperature, max tokens, capabilities, all in sidebar | ☑️ | ☐ @_________ | ☐ | ☐ | ☐ |
-| **Node Drag & Drop** | ⚠️ Manual | ⚪ Low | Nodes positioned randomly, no grid snap or alignment | Add: grid snapping, alignment guides, auto-layout algorithms | ☑️ | ☐ @_________ | ☐ | ☐ | ☐ |
-| **Workflow Validation** | ❌ Missing | 🔴 High | No validation before execution (orphan nodes, cycles, etc.) | Implement: connection validation, cycle detection, required fields check | ☑️ | ☑️ @UniversalStandards | ☑️ | ☐ | ☐ |
+| **Node Drag & Drop** | ✅ Advanced | ⚪ Low | Grid snapping (10px/20px/50px), auto-layout algorithms, hold Shift to disable snapping | Implemented: configurable grid size, snap on drag end, auto-arrange button | ☑️ | ☑️ @UniversalStandards | ☑️ | ☐ | ☑️ |
+| **Workflow Validation** | ✅ Implemented | 🔴 High | Connection validation prevents self-connections, duplicates, and cycles | Implemented: real-time validation, visual feedback, error messages | ☑️ | ☑️ @UniversalStandards | ☑️ | ☐ | ☑️ |
 | **Onboarding Flow** | ❌ Missing | 🟡 Medium | No tutorial or getting started guide | Add: interactive tutorial, sample workflows, tooltips | ☑️ | ☐ @_________ | ☐ | ☐ | ☐ |
 
 ---
