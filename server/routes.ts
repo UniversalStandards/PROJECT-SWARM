@@ -5,6 +5,8 @@ import { orchestrator } from "./ai/orchestrator";
 import { z } from "zod";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import type { Request } from "express";
+import { workflowValidator } from "./lib/workflow-validator";
+import { WorkflowValidationError } from "@shared/errors";
 
 // Execution request schema - only workflowId and input are needed from client
 const executeWorkflowSchema = insertExecutionSchema.pick({ workflowId: true, input: true });
@@ -185,6 +187,28 @@ export async function registerRoutes(app: Express) {
       
       await storage.deleteWorkflow(req.params.id);
       res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Workflow Validation
+  app.post("/api/workflows/:id/validate", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow) {
+        return res.status(404).json({ error: "Workflow not found" });
+      }
+      
+      // Verify ownership
+      if (workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      
+      const result = workflowValidator.validate(workflow);
+      res.json(result);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
