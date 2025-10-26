@@ -142,7 +142,7 @@ export const insertAssistantChatSchema = createInsertSchema(assistantChats).omit
 export const insertKnowledgeEntrySchema = createInsertSchema(knowledgeEntries).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Phase 3A: Workflow Versions Table
-export const workflowVersions: any = pgTable("workflow_versions", {
+export const workflowVersions = pgTable("workflow_versions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workflowId: varchar("workflow_id").notNull().references(() => workflows.id, { onDelete: "cascade" }),
   version: integer("version").notNull(),
@@ -155,7 +155,7 @@ export const workflowVersions: any = pgTable("workflow_versions", {
   executionCount: integer("execution_count").default(0).notNull(),
   successRate: integer("success_rate").default(0), // 0-100
   avgDuration: integer("avg_duration"), // milliseconds
-}, (table: any) => [
+}, (table) => [
   index("idx_workflow_versions").on(table.workflowId, table.version.desc()),
 ]);
 

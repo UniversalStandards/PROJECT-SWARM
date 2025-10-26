@@ -163,7 +163,8 @@ export class WorkflowImporter {
         for (const webhookData of exportData.webhooks) {
           try {
             // Generate new webhook with new secret
-            await webhookManager.createWebhook(newWorkflow.id);
+            // Note: baseUrl will be empty string, webhook URL will be generated when accessed through API
+            await webhookManager.createWebhook(newWorkflow.id, "");
             warnings.push("Webhook imported with new secret key (old key not preserved for security)");
           } catch (error) {
             warnings.push(`Failed to import webhook: ${error instanceof Error ? error.message : "Unknown error"}`);
