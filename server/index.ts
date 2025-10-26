@@ -1,6 +1,9 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { errorHandler } from "./middleware/error-handler";
+import { wsManager } from "./websocket";
+import { createServer } from "http";
 
 const app = express();
 app.use(express.json());
@@ -60,6 +63,8 @@ app.use((req, res, next) => {
     res.status(status).json({ message });
     throw err;
   });
+  // Use enhanced error handler
+  app.use(errorHandler);
 
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
@@ -75,7 +80,12 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || '5000', 10);
-  app.listen(port, "0.0.0.0", () => {
+  
+  // Create HTTP server and initialize WebSocket
+  const server = createServer(app);
+  wsManager.initialize(server);
+  
+  server.listen(port, "0.0.0.0", () => {
     log(`serving on port ${port}`);
   });
 })();
