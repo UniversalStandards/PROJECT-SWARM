@@ -11,15 +11,22 @@ const AUTH_TAG_LENGTH = 16;
  */
 function getEncryptionKey(): Buffer {
   const key = process.env.ENCRYPTION_KEY;
+  const salt = process.env.ENCRYPTION_SALT;
+  
+  if (!salt) {
+    console.warn('WARNING: ENCRYPTION_SALT not set in environment. Using insecure default salt for development only!');
+  }
+  
+  const effectiveSalt = salt || 'dev-only-salt-not-for-production';
   
   if (!key) {
     console.warn('WARNING: ENCRYPTION_KEY not set in environment. Using insecure default key for development only!');
     // Generate a deterministic key for development
-    return crypto.scryptSync('dev-only-key-not-for-production', 'salt', KEY_LENGTH);
+    return crypto.scryptSync('dev-only-key-not-for-production', effectiveSalt, KEY_LENGTH);
   }
   
   // Derive a proper key from the environment variable
-  return crypto.scryptSync(key, 'salt', KEY_LENGTH);
+  return crypto.scryptSync(key, effectiveSalt, KEY_LENGTH);
 }
 
 /**
