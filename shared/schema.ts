@@ -141,6 +141,92 @@ export const insertTemplateSchema = createInsertSchema(templates).omit({ id: tru
 export const insertAssistantChatSchema = createInsertSchema(assistantChats).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertKnowledgeEntrySchema = createInsertSchema(knowledgeEntries).omit({ id: true, createdAt: true, updatedAt: true });
 
+// Phase 3A: Workflow Versions Table
+export const workflowVersions = pgTable("workflow_versions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workflowId: varchar("workflow_id").notNull().references(() => workflows.id, { onDelete: "cascade" }),
+  version: integer("version").notNull(),
+  commitMessage: text("commit_message"),
+  createdBy: varchar("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  workflowData: jsonb("workflow_data").notNull(), // Stores nodes, edges, agents
+  parentVersionId: varchar("parent_version_id"),
+  tag: text("tag"), // v1.0, production, stable, etc.
+  executionCount: integer("execution_count").default(0).notNull(),
+  successRate: integer("success_rate").default(0), // 0-100
+  avgDuration: integer("avg_duration"), // milliseconds
+}, (table) => [
+  index("idx_workflow_versions").on(table.workflowId, table.version.desc()),
+]);
+
+// Phase 3A: Workflow Schedules Table
+export const workflowSchedules = pgTable("workflow_schedules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workflowId: varchar("workflow_id").notNull().references(() => workflows.id, { onDelete: "cascade" }),
+  cronExpression: text("cron_expression").notNull(),
+  enabled: boolean("enabled").default(true).notNull(),
+  timezone: text("timezone").default("UTC").notNull(),
+  nextRunAt: timestamp("next_run_at"),
+  lastRunAt: timestamp("last_run_at"),
+  executionCount: integer("execution_count").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Phase 3A: Workflow Webhooks Table
+export const workflowWebhooks = pgTable("workflow_webhooks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workflowId: varchar("workflow_id").notNull().references(() => workflows.id, { onDelete: "cascade" }),
+  webhookUrl: text("webhook_url").notNull(),
+  secretKey: text("secret_key").notNull(),
+  enabled: boolean("enabled").default(true).notNull(),
+  triggerCount: integer("trigger_count").default(0).notNull(),
+  lastTriggeredAt: timestamp("last_triggered_at"),
+  ipWhitelist: jsonb("ip_whitelist"), // Array of allowed IPs
+  payloadTransformer: jsonb("payload_transformer"), // Mapping configuration
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_webhook_url").on(table.webhookUrl),
+]);
+
+// Phase 3A: Execution Costs Table
+export const executionCosts = pgTable("execution_costs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  executionId: varchar("execution_id").notNull().references(() => executions.id, { onDelete: "cascade" }),
+  agentId: varchar("agent_id").notNull().references(() => agents.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(),
+  model: text("model").notNull(),
+  inputTokens: integer("input_tokens").default(0).notNull(),
+  outputTokens: integer("output_tokens").default(0).notNull(),
+  totalTokens: integer("total_tokens").default(0).notNull(),
+  estimatedCost: integer("estimated_cost").default(0).notNull(), // Cost in cents
+  currency: text("currency").default("USD").notNull(),
+  calculatedAt: timestamp("calculated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_execution_costs").on(table.executionId, table.agentId),
+]);
+
+// Phase 3A: Provider Pricing Table
+export const providerPricing = pgTable("provider_pricing", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  provider: text("provider").notNull(),
+  model: text("model").notNull(),
+  inputTokenPrice: integer("input_token_price").notNull(), // Price per 1M tokens in cents
+  outputTokenPrice: integer("output_token_price").notNull(), // Price per 1M tokens in cents
+  currency: text("currency").default("USD").notNull(),
+  effectiveDate: timestamp("effective_date").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_provider_pricing").on(table.provider, table.model),
+]);
+
+export const insertWorkflowVersionSchema = createInsertSchema(workflowVersions).omit({ id: true, createdAt: true });
+export const insertWorkflowScheduleSchema = createInsertSchema(workflowSchedules).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertWorkflowWebhookSchema = createInsertSchema(workflowWebhooks).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertExecutionCostSchema = createInsertSchema(executionCosts).omit({ id: true, calculatedAt: true });
+export const insertProviderPricingSchema = createInsertSchema(providerPricing).omit({ id: true, effectiveDate: true, updatedAt: true });
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;
@@ -168,3 +254,18 @@ export type AssistantChat = typeof assistantChats.$inferSelect;
 
 export type InsertKnowledgeEntry = z.infer<typeof insertKnowledgeEntrySchema>;
 export type KnowledgeEntry = typeof knowledgeEntries.$inferSelect;
+
+export type InsertWorkflowVersion = z.infer<typeof insertWorkflowVersionSchema>;
+export type WorkflowVersion = typeof workflowVersions.$inferSelect;
+
+export type InsertWorkflowSchedule = z.infer<typeof insertWorkflowScheduleSchema>;
+export type WorkflowSchedule = typeof workflowSchedules.$inferSelect;
+
+export type InsertWorkflowWebhook = z.infer<typeof insertWorkflowWebhookSchema>;
+export type WorkflowWebhook = typeof workflowWebhooks.$inferSelect;
+
+export type InsertExecutionCost = z.infer<typeof insertExecutionCostSchema>;
+export type ExecutionCost = typeof executionCosts.$inferSelect;
+
+export type InsertProviderPricing = z.infer<typeof insertProviderPricingSchema>;
+export type ProviderPricing = typeof providerPricing.$inferSelect;

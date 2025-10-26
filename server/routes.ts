@@ -746,4 +746,421 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
       res.status(500).json({ error: error.message || 'Failed to process message' });
     }
   });
+
+  // Phase 3A: Workflow Versioning API
+  const { versionManager } = await import("./lib/workflow-version");
+
+  app.get("/api/workflows/:id/versions", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(404).json({ error: "Workflow not found" });
+      }
+
+      const versions = await versionManager.getVersions(req.params.id);
+      res.json(versions);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/workflows/:id/versions", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(404).json({ error: "Workflow not found" });
+      }
+
+      const { commitMessage } = req.body;
+      const version = await versionManager.createVersion(req.params.id, userId, commitMessage);
+      res.json(version);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/workflows/:id/restore/:versionId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(404).json({ error: "Workflow not found" });
+      }
+
+      await versionManager.restoreVersion(req.params.id, req.params.versionId, userId);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/workflows/:id/versions/:v1/compare/:v2", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(404).json({ error: "Workflow not found" });
+      }
+
+      const comparison = await versionManager.compareVersions(req.params.v1, req.params.v2);
+      res.json(comparison);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/versions/:versionId/tag", isAuthenticated, async (req: any, res) => {
+    try {
+      const { tag } = req.body;
+      await versionManager.tagVersion(req.params.versionId, tag);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Phase 3A: Workflow Scheduling API
+  const { scheduler } = await import("./lib/scheduler");
+
+  app.get("/api/workflows/:id/schedules", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(404).json({ error: "Workflow not found" });
+      }
+
+      const schedules = await scheduler.getSchedules(req.params.id);
+      res.json(schedules);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/workflows/:id/schedules", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(404).json({ error: "Workflow not found" });
+      }
+
+      const schedule = await scheduler.createSchedule({
+        workflowId: req.params.id,
+        cronExpression: req.body.cronExpression,
+        enabled: req.body.enabled !== undefined ? req.body.enabled : true,
+        timezone: req.body.timezone || "UTC",
+      });
+      res.json(schedule);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/schedules/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const schedule = await scheduler.updateSchedule(req.params.id, req.body);
+      res.json(schedule);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/schedules/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      await scheduler.deleteSchedule(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/schedules/:id/pause", isAuthenticated, async (req: any, res) => {
+    try {
+      await scheduler.pauseSchedule(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/schedules/:id/resume", isAuthenticated, async (req: any, res) => {
+    try {
+      await scheduler.resumeSchedule(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Phase 3A: Webhook API
+  const { webhookManager } = await import("./lib/webhooks");
+
+  app.get("/api/workflows/:id/webhooks", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(404).json({ error: "Workflow not found" });
+      }
+
+      const webhook = await webhookManager.getWebhook(req.params.id);
+      res.json(webhook || null);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/workflows/:id/webhooks", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(404).json({ error: "Workflow not found" });
+      }
+
+      const baseUrl = `${req.protocol}://${req.get("host")}`;
+      const webhook = await webhookManager.createWebhook(req.params.id, baseUrl);
+      res.json(webhook);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/webhooks/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const webhook = await webhookManager.updateWebhook(req.params.id, req.body);
+      res.json(webhook);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/webhooks/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      await webhookManager.deleteWebhook(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/webhooks/:id/regenerate", isAuthenticated, async (req: any, res) => {
+    try {
+      const baseUrl = `${req.protocol}://${req.get("host")}`;
+      const webhook = await webhookManager.regenerateSecret(req.params.id, baseUrl);
+      res.json(webhook);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/webhooks/:id/test", isAuthenticated, async (req: any, res) => {
+    try {
+      const result = await webhookManager.testWebhook(req.params.id, req.body.payload);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Public webhook trigger endpoint (no authentication)
+  app.post("/api/webhooks/trigger/:workflowId/:secretKey", async (req, res) => {
+    try {
+      const { workflowId, secretKey } = req.params;
+      const ipAddress = req.ip || req.socket.remoteAddress;
+      
+      const result = await webhookManager.triggerWebhook(
+        workflowId,
+        secretKey,
+        req.body,
+        ipAddress
+      );
+
+      if (result.success) {
+        res.json({ success: true, executionId: result.executionId });
+      } else {
+        res.status(400).json({ error: result.error });
+      }
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Phase 3A: Cost Tracking & Analytics API
+  const { costTracker } = await import("./lib/cost-tracker");
+
+  app.get("/api/analytics/costs", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : new Date();
+
+      const analytics = await costTracker.getCostAnalytics(userId, startDate, endDate);
+      res.json(analytics);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/analytics/usage", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : new Date();
+
+      const usage = await costTracker.getTokenUsageStats(userId, startDate, endDate);
+      res.json(usage);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/analytics/trends", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : new Date();
+
+      const trends = await costTracker.getCostTrends(userId, startDate, endDate);
+      res.json(trends);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/analytics/expensive-workflows", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+
+      const workflows = await costTracker.getMostExpensiveWorkflows(userId, limit);
+      res.json(workflows);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/analytics/export", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : new Date();
+
+      const csv = await costTracker.exportCostReport(userId, startDate, endDate);
+      
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", "attachment; filename=cost-report.csv");
+      res.send(csv);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Phase 3A: Workflow Export/Import API
+  const { workflowExporter } = await import("./lib/workflow-exporter");
+  const { workflowImporter } = await import("./lib/workflow-importer");
+
+  app.get("/api/workflows/:id/export", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(404).json({ error: "Workflow not found" });
+      }
+
+      const options = {
+        includeExecutionHistory: req.query.includeExecutions === "true",
+        includeKnowledgeBase: req.query.includeKnowledge === "true",
+        includeSchedules: req.query.includeSchedules === "true",
+        includeWebhooks: req.query.includeWebhooks === "true",
+        anonymize: req.query.anonymize === "true",
+      };
+
+      const exportData = await workflowExporter.exportWorkflow(req.params.id, options);
+      
+      res.setHeader("Content-Type", "application/json");
+      res.setHeader("Content-Disposition", `attachment; filename=${workflow.name}.json`);
+      res.json(exportData);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/workflows/import", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      
+      const options = {
+        userId,
+        conflictResolution: (req.body.conflictResolution as "skip" | "rename" | "overwrite") || "rename",
+        importSchedules: req.body.importSchedules !== false,
+        importWebhooks: req.body.importWebhooks !== false,
+        importKnowledgeBase: req.body.importKnowledgeBase !== false,
+      };
+
+      const result = await workflowImporter.importWorkflow(req.body.workflow, options);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/workflows/bulk-export", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const { workflowIds } = req.body;
+
+      if (!Array.isArray(workflowIds) || workflowIds.length === 0) {
+        return res.status(400).json({ error: "workflowIds array is required" });
+      }
+
+      const options = {
+        includeExecutionHistory: req.query.includeExecutions === "true",
+        includeKnowledgeBase: req.query.includeKnowledge === "true",
+        includeSchedules: req.query.includeSchedules === "true",
+        includeWebhooks: req.query.includeWebhooks === "true",
+      };
+
+      const exportData = await workflowExporter.exportMultipleWorkflows(workflowIds, options);
+      
+      res.setHeader("Content-Type", "application/json");
+      res.setHeader("Content-Disposition", "attachment; filename=workflows-export.json");
+      res.json(exportData);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/workflows/:id/clone", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(404).json({ error: "Workflow not found" });
+      }
+
+      const result = await workflowImporter.cloneWorkflow(
+        req.params.id,
+        userId,
+        req.body.name
+      );
+      
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 }
