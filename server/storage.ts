@@ -227,7 +227,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteExecutionsByUserId(userId: string): Promise<number> {
-    const result = await db.delete(executions).where(eq(executions.userId, userId)).returning();
+    const result = await db.delete(executions).where(eq(executions.userId, userId)).returning({ id: executions.id });
     return result.length;
   }
 
