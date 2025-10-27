@@ -51,13 +51,15 @@
 
 | Item | Status | Priority | Description | Technical Notes | 🆕 New | 👤 Assigned | 🔧 Being Worked | 🚫 Stuck | ✅ Complete |
 |------|--------|----------|-------------|-----------------|--------|-------------|-----------------|----------|-------------|
-| **Workflow Builder UX** | ⚠️ Basic | 🟡 Medium | No auto-layout, manual positioning only, limited visual feedback | Add: smart positioning, connection validation, minimap | ☑️ | ☐ @_________ | ☐ | ☐ | ☐ |
+| **Workflow Builder UX** | ✅ Enhanced | 🟡 Medium | Advanced UX with auto-layout, grid snapping, minimap, validation, search, and keyboard shortcuts | Phase 2B complete: smart positioning, connection validation, minimap, comprehensive tooling | ☑️ | ☑️ @UniversalStandards | ☑️ | ☐ | ☑️ |
 | **Error Handling** | ⚠️ Basic | 🔴 High | Generic error messages, no detailed validation feedback | Need: field-level validation, better error boundaries, retry logic | ☑️ | ☑️ @UniversalStandards | ☑️ | ☐ | ☐ |
 | **Loading States** | ✅ Complete | ⚪ Low | All pages have consistent loading indicators | Added skeletons/spinners across all async operations | ☑️ | ☑️ @UniversalStandards | ☑️ | ☐ | ☑️ |
 | **Agent Configuration Panel** | ✅ Enhanced | 🟡 Medium | Full advanced settings with tooltips and presets | All parameters exposed: temp, tokens, top-p, penalties, capabilities | ☑️ | ☑️ @UniversalStandards | ☑️ | ☐ | ☑️ |
 | **Error Handling** | ✅ Enhanced | 🔴 High | Structured error responses with field-level validation and retry logic | Error middleware handles all error types with proper status codes, retry logic for transient failures | ☑️ | ☑️ @UniversalStandards | ☐ | ☐ | ☑️ |
 | **Loading States** | ⚠️ Inconsistent | ⚪ Low | Some components lack loading indicators | Add skeletons/spinners across all async operations | ☑️ | ☐ @_________ | ☐ | ☐ | ☐ |
 | **Agent Configuration Panel** | ⚠️ Limited | 🟡 Medium | Only shows basic fields (name, provider, model) | Expose: temperature, max tokens, capabilities, all in sidebar | ☑️ | ☐ @_________ | ☐ | ☐ | ☐ |
+| **Node Drag & Drop** | ✅ Enhanced | ⚪ Low | Grid snapping, alignment guides, and auto-layout implemented | Complete with hierarchical, force-directed, circular, and grid layouts | ☑️ | ☑️ @UniversalStandards | ☑️ | ☐ | ☑️ |
+| **Workflow Validation** | ✅ Complete | 🔴 High | Real-time validation with cycle detection, orphan nodes, and connection checks | Implemented with visual feedback and validation panel | ☑️ | ☑️ @UniversalStandards | ☑️ | ☐ | ☑️ |
 | **Node Drag & Drop** | ⚠️ Manual | ⚪ Low | Nodes positioned randomly, no grid snap or alignment | Add: grid snapping, alignment guides, auto-layout algorithms | ☑️ | ☐ @_________ | ☐ | ☐ | ☐ |
 | **Workflow Validation** | ✅ Implemented | 🔴 High | Complete validation system with cycle detection, orphan nodes, field validation | `/api/workflows/:id/validate` endpoint, validates before execution, detailed error messages | ☑️ | ☑️ @UniversalStandards | ☐ | ☐ | ☑️ |
 | **Onboarding Flow** | ❌ Missing | 🟡 Medium | No tutorial or getting started guide | Add: interactive tutorial, sample workflows, tooltips | ☑️ | ☐ @_________ | ☐ | ☐ | ☐ |
