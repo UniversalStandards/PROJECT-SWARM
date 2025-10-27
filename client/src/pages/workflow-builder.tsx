@@ -1,5 +1,6 @@
 import { useCallback, useState, useEffect, useRef } from 'react';
 import {
+  ReactFlow,
   ReactFlowProvider,
   Controls,
   applyNodeChanges,
@@ -31,6 +32,8 @@ import {
 import { AgentNode } from '@/components/workflow/agent-node';
 import { AgentConfigPanel } from '@/components/workflow/agent-config-panel';
 import { ExecutionInputDialog } from '@/components/workflow/execution-input-dialog';
+import { WorkflowMinimap } from '@/components/workflow/workflow-minimap';
+import { WorkflowToolbar } from '@/components/workflow/workflow-toolbar';
 import { BuilderToolbar } from '@/components/workflow/builder-toolbar';
 import { LayoutControls } from '@/components/workflow/layout-controls';
 import { Minimap } from '@/components/workflow/minimap';
@@ -39,9 +42,12 @@ import { NodeContextMenu, useNodeClipboard } from '@/components/workflow/node-co
 import { NodeSearch } from '@/components/workflow/node-search';
 import { WorkflowCanvas, useZoomControls, ZoomIndicator } from '@/components/workflow/workflow-canvas';
 import { useToast } from '@/hooks/use-toast';
+import { useGridSnapping } from '@/hooks/useGridSnapping';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useParams, useLocation } from 'wouter';
+import { applyLayout, type LayoutAlgorithm } from '@/lib/workflow-layout';
+import { validateConnection, getConnectionStyle } from '@/lib/connection-validator';
 import type { Workflow } from '@shared/schema';
 import {
   Sheet,
@@ -69,6 +75,23 @@ function WorkflowBuilderContent() {
   const [workflowDescription, setWorkflowDescription] = useState('');
   const [workflowId, setWorkflowId] = useState<string | null>(params.id || null);
   const [showExecutionDialog, setShowExecutionDialog] = useState(false);
+  const [minimapEnabled, setMinimapEnabled] = useState(true);
+  const { toast } = useToast();
+  const reactFlowInstance = useReactFlow();
+  
+  // Grid snapping hook
+  const { 
+    options: gridOptions, 
+    updateOptions: updateGridOptions,
+    applySnapping,
+    snapAllNodesToGrid,
+    handleKeyDown: handleGridKeyDown,
+    handleKeyUp: handleGridKeyUp,
+  } = useGridSnapping({
+    enabled: true,
+    gridSize: 20,
+    showGrid: true,
+  });
   const [showGrid, setShowGrid] = useState(true);
   const [snapToGrid, setSnapToGrid] = useState(true);
   const [showMinimap, setShowMinimap] = useState(true);
@@ -143,6 +166,10 @@ function WorkflowBuilderContent() {
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
+      const snappedChanges = applySnapping(changes);
+      setNodes((nds) => applyNodeChanges(snappedChanges, nds));
+    },
+    [applySnapping]
       setNodes((nds) => {
         const updated = applyNodeChanges(changes, nds);
         // Track selected nodes
@@ -160,8 +187,41 @@ function WorkflowBuilderContent() {
   );
 
   const onConnect = useCallback(
-    (connection: Connection) => setEdges((eds) => addEdge({ ...connection, animated: true, style: { stroke: '#06b6d4' } }, eds)),
-    []
+    (connection: Connection) => {
+      const validation = validateConnection(connection, nodes, edges);
+      
+      if (!validation.valid) {
+        toast({
+          title: "Invalid Connection",
+          description: validation.message,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setEdges((eds) => addEdge({ 
+        ...connection, 
+        animated: true, 
+        style: { stroke: '#06b6d4' } 
+      }, eds));
+    },
+    [nodes, edges, toast]
+  );
+  
+  // Connection validation visual feedback
+  const isValidConnection = useCallback(
+    (connection: Connection | Edge) => {
+      // If it's an Edge, convert to Connection format
+      const conn: Connection = 'id' in connection ? {
+        source: connection.source,
+        target: connection.target,
+        sourceHandle: connection.sourceHandle ?? null,
+        targetHandle: connection.targetHandle ?? null,
+      } : connection;
+      
+      return validateConnection(conn, nodes, edges).valid;
+    },
+    [nodes, edges]
   );
 
   const addAgentNode = async (type: string) => {
@@ -327,6 +387,152 @@ function WorkflowBuilderContent() {
     executeWorkflowMutation.mutate(input);
     setShowExecutionDialog(false);
   };
+  
+  // Toolbar handlers
+  const handleAutoLayout = useCallback((algorithm: LayoutAlgorithm) => {
+    const layoutedNodes = applyLayout(nodes, edges, { algorithm });
+    setNodes(layoutedNodes);
+  }, [nodes, edges]);
+  
+  const handleZoomIn = useCallback(() => {
+    reactFlowInstance.zoomIn();
+  }, [reactFlowInstance]);
+  
+  const handleZoomOut = useCallback(() => {
+    reactFlowInstance.zoomOut();
+  }, [reactFlowInstance]);
+  
+  const handleFitView = useCallback(() => {
+    reactFlowInstance.fitView({ padding: 0.2, duration: 300 });
+  }, [reactFlowInstance]);
+  
+  const handleZoomToActual = useCallback(() => {
+    reactFlowInstance.setViewport({ x: 0, y: 0, zoom: 1 }, { duration: 300 });
+  }, [reactFlowInstance]);
+  
+  const handleToggleGrid = useCallback(() => {
+    updateGridOptions({ enabled: !gridOptions.enabled });
+  }, [gridOptions.enabled, updateGridOptions]);
+  
+  const handleToggleMinimap = useCallback(() => {
+    setMinimapEnabled(!minimapEnabled);
+  }, [minimapEnabled]);
+  
+  const handleGridSizeChange = useCallback((size: number) => {
+    updateGridOptions({ gridSize: size });
+  }, [updateGridOptions]);
+  
+  const handleSnapAllToGrid = useCallback(() => {
+    const snappedNodes = snapAllNodesToGrid(nodes);
+    setNodes(snappedNodes);
+  }, [nodes, snapAllNodesToGrid]);
+  
+  const handleExportImage = useCallback(() => {
+    // This would require additional library like html-to-image
+    toast({
+      title: "Export Image",
+      description: "Image export feature coming soon",
+    });
+  }, [toast]);
+  
+  const handleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
+  }, []);
+  
+  // Keyboard event listeners for shortcuts
+  useEffect(() => {
+    const handleKeyboardShortcuts = (e: KeyboardEvent) => {
+      // Check if user is in an input field
+      const target = e.target as HTMLElement;
+      const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+      
+      // Grid snapping shift key
+      handleGridKeyDown(e);
+      
+      if (isInputField) return;
+      
+      // Keyboard shortcuts
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const modKey = isMac ? e.metaKey : e.ctrlKey;
+      
+      // Ctrl/Cmd + F - Fit view
+      if (modKey && e.key === 'f') {
+        e.preventDefault();
+        handleFitView();
+      }
+      
+      // Ctrl/Cmd + G - Toggle grid
+      if (modKey && e.key === 'g') {
+        e.preventDefault();
+        handleToggleGrid();
+      }
+      
+      // Ctrl/Cmd + M - Toggle minimap
+      if (modKey && e.key === 'm') {
+        e.preventDefault();
+        handleToggleMinimap();
+      }
+      
+      // Ctrl/Cmd + 0 - Zoom to 100%
+      if (modKey && e.key === '0') {
+        e.preventDefault();
+        handleZoomToActual();
+      }
+      
+      // Ctrl/Cmd + Plus - Zoom in
+      if (modKey && (e.key === '+' || e.key === '=')) {
+        e.preventDefault();
+        handleZoomIn();
+      }
+      
+      // Ctrl/Cmd + Minus - Zoom out
+      if (modKey && e.key === '-') {
+        e.preventDefault();
+        handleZoomOut();
+      }
+      
+      // Delete or Backspace - Delete selected nodes
+      if ((e.key === 'Delete' || e.key === 'Backspace') && !isInputField) {
+        e.preventDefault();
+        const selectedNodeIds = nodes.filter(n => n.selected).map(n => n.id);
+        if (selectedNodeIds.length > 0) {
+          setNodes(nodes.filter(n => !n.selected));
+          setEdges(edges.filter(e => 
+            !selectedNodeIds.includes(e.source) && !selectedNodeIds.includes(e.target)
+          ));
+        }
+      }
+      
+      // Escape - Deselect all
+      if (e.key === 'Escape') {
+        setNodes(nodes.map(n => ({ ...n, selected: false })));
+        setSelectedNode(null);
+      }
+      
+      // Ctrl/Cmd + A - Select all
+      if (modKey && e.key === 'a') {
+        e.preventDefault();
+        setNodes(nodes.map(n => ({ ...n, selected: true })));
+      }
+    };
+    
+    const handleKeyUpEvent = (e: KeyboardEvent) => {
+      handleGridKeyUp(e);
+    };
+    
+    window.addEventListener('keydown', handleKeyboardShortcuts);
+    window.addEventListener('keyup', handleKeyUpEvent);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyboardShortcuts);
+      window.removeEventListener('keyup', handleKeyUpEvent);
+    };
+  }, [handleGridKeyDown, handleGridKeyUp, handleFitView, handleToggleGrid, handleToggleMinimap, 
+      handleZoomToActual, handleZoomIn, handleZoomOut, nodes, edges, setSelectedNode]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -522,6 +728,123 @@ function WorkflowBuilderContent() {
       />
 
       <div className="flex-1 relative">
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onNodeClick={onNodeClick}
+          nodeTypes={nodeTypes}
+          isValidConnection={isValidConnection}
+          fitView
+          data-testid="workflow-canvas"
+        >
+          <Background 
+            variant={gridOptions.showGrid ? BackgroundVariant.Dots : BackgroundVariant.Lines} 
+            gap={gridOptions.gridSize} 
+            size={1} 
+          />
+          <Controls />
+          
+          {/* Minimap */}
+          <WorkflowMinimap 
+            position="bottom-right"
+            visible={minimapEnabled}
+          />
+          
+          {/* Toolbar */}
+          <Panel position="top-center" className="m-4">
+            <WorkflowToolbar
+              onZoomIn={handleZoomIn}
+              onZoomOut={handleZoomOut}
+              onFitView={handleFitView}
+              onZoomToActual={handleZoomToActual}
+              onAutoLayout={handleAutoLayout}
+              onToggleGrid={handleToggleGrid}
+              onToggleMinimap={handleToggleMinimap}
+              onExportImage={handleExportImage}
+              onFullscreen={handleFullscreen}
+              gridEnabled={gridOptions.enabled}
+              minimapEnabled={minimapEnabled}
+              gridSize={gridOptions.gridSize}
+              onGridSizeChange={handleGridSizeChange}
+            />
+          </Panel>
+          
+          <Panel position="top-left" className="m-4">
+            <Card className="w-64">
+              <CardContent className="p-4">
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <Plus className="w-4 h-4" />
+                  Add Agent
+                </h3>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => addAgentNode('Coordinator')}
+                    className="justify-start gap-2"
+                    data-testid="button-add-coordinator"
+                  >
+                    <Bot className="w-4 h-4" />
+                    Coordinator
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => addAgentNode('Coder')}
+                    className="justify-start gap-2"
+                    data-testid="button-add-coder"
+                  >
+                    <Code className="w-4 h-4" />
+                    Coder
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => addAgentNode('Researcher')}
+                    className="justify-start gap-2"
+                    data-testid="button-add-researcher"
+                  >
+                    <Search className="w-4 h-4" />
+                    Researcher
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => addAgentNode('Database')}
+                    className="justify-start gap-2"
+                    data-testid="button-add-database"
+                  >
+                    <Database className="w-4 h-4" />
+                    Database
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => addAgentNode('Security')}
+                    className="justify-start gap-2"
+                    data-testid="button-add-security"
+                  >
+                    <Shield className="w-4 h-4" />
+                    Security
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => addAgentNode('Custom')}
+                    className="justify-start gap-2"
+                    data-testid="button-add-custom"
+                  >
+                    <Settings className="w-4 h-4" />
+                    Custom
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </Panel>
+        </ReactFlow>
         <NodeContextMenu
           node={selectedNode || undefined}
           onDuplicate={handleNodeDuplicate}
