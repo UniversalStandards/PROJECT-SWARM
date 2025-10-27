@@ -2,6 +2,7 @@ import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import { GoogleGenAI } from '@google/genai';
 import type { Agent, KnowledgeEntry } from '@shared/schema';
+import { fallbackManager } from './providers/fallback-manager';
 
 interface ExecutionContext {
   agentId: string;
@@ -9,6 +10,7 @@ interface ExecutionContext {
   temperature: number;
   maxTokens: number;
   knowledgeContext?: KnowledgeEntry[];
+  enableFallback?: boolean;
 }
 
 interface ExecutionResult {
@@ -18,6 +20,9 @@ interface ExecutionResult {
   promptTokens?: number;
   completionTokens?: number;
   costUsd?: number;
+  provider?: string;
+  model?: string;
+  fallbackUsed?: boolean;
 }
 
 export class AIExecutor {
@@ -64,6 +69,87 @@ export class AIExecutor {
   }
 
   async executeAgent(agent: Agent, context: ExecutionContext): Promise<ExecutionResult> {
+    const enableFallback = context.enableFallback !== false; // Default to true
+    
+    if (!enableFallback) {
+      // Execute without fallback
+      return await this.executeSingleProvider(agent, context);
+    }
+
+    // Execute with fallback logic
+    const fallbackConfig = fallbackManager.getDefaultFallbackConfig(agent);
+    const failedProviders = new Set<string>();
+    let lastError: any = null;
+
+    // Try primary provider
+    try {
+      const result = await this.executeSingleProvider(agent, context);
+      fallbackManager.recordSuccess(agent.provider);
+      return {
+        ...result,
+        provider: agent.provider,
+        model: agent.model,
+        fallbackUsed: false,
+      };
+    } catch (error: any) {
+      lastError = error;
+      failedProviders.add(agent.provider);
+      fallbackManager.recordFailure(agent.provider, error.message);
+
+      // Check if we should fallback
+      if (!fallbackManager.shouldFallback(error, fallbackConfig)) {
+        throw error;
+      }
+
+      console.log(`[Executor] Primary provider ${agent.provider} failed, attempting fallback...`);
+    }
+
+    // Try fallback providers
+    while (failedProviders.size < fallbackConfig.fallbackOrder.length + 1) {
+      const nextProvider = fallbackManager.getNextProvider(fallbackConfig, failedProviders);
+      
+      if (!nextProvider) {
+        break; // No more providers to try
+      }
+
+      try {
+        // Create a temporary agent with the fallback provider
+        const fallbackAgent = {
+          ...agent,
+          provider: nextProvider,
+          model: fallbackManager.getModelForProvider(nextProvider, agent.model),
+        };
+
+        console.log(`[Executor] Trying fallback provider: ${nextProvider} with model ${fallbackAgent.model}`);
+        
+        const result = await this.executeSingleProvider(fallbackAgent, context);
+        
+        // Success! Log the fallback event
+        fallbackManager.recordSuccess(nextProvider);
+        fallbackManager.logFallbackEvent(agent.provider, nextProvider, lastError?.message || "Unknown error", true);
+        
+        return {
+          ...result,
+          provider: nextProvider,
+          model: fallbackAgent.model,
+          fallbackUsed: true,
+        };
+      } catch (error: any) {
+        lastError = error;
+        failedProviders.add(nextProvider);
+        fallbackManager.recordFailure(nextProvider, error.message);
+        fallbackManager.logFallbackEvent(agent.provider, nextProvider, error.message, false);
+        console.log(`[Executor] Fallback provider ${nextProvider} also failed:`, error.message);
+      }
+    }
+
+    // All providers failed
+    throw new Error(
+      `All providers failed. Last error: ${lastError?.message || "Unknown error"}. Tried providers: ${Array.from(failedProviders).join(", ")}`
+    );
+  }
+
+  private async executeSingleProvider(agent: Agent, context: ExecutionContext): Promise<ExecutionResult> {
     const provider = agent.provider.toLowerCase();
     
     try {

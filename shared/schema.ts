@@ -23,6 +23,22 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  // GitHub OAuth tokens (per-user)
+  githubAccessToken: text("github_access_token"),
+  githubRefreshToken: text("github_refresh_token"),
+  githubTokenExpiry: timestamp("github_token_expiry"),
+  // API Keys (encrypted)
+  openaiApiKey: text("openai_api_key"),
+  anthropicApiKey: text("anthropic_api_key"),
+  geminiApiKey: text("gemini_api_key"),
+  // User Preferences
+  defaultProvider: text("default_provider").default("openai"),
+  defaultModel: text("default_model"),
+  theme: text("theme").default("system"),
+  emailNotifications: boolean("email_notifications").default(true),
+  inAppNotifications: boolean("in_app_notifications").default(true),
+  executionTimeout: integer("execution_timeout").default(300),
+  autoSaveInterval: integer("auto_save_interval").default(30),
   // Legacy fields for backward compatibility (deprecated)
   replitId: text("replit_id").unique(),
   username: text("username"),
@@ -54,6 +70,11 @@ export const agents = pgTable("agents", {
   temperature: integer("temperature").default(70),
   maxTokens: integer("max_tokens").default(1000),
   capabilities: jsonb("capabilities").default([]),
+  // Advanced settings
+  topP: integer("top_p"),
+  frequencyPenalty: integer("frequency_penalty"),
+  presencePenalty: integer("presence_penalty"),
+  stopSequences: jsonb("stop_sequences").default([]),
   nodeId: text("node_id").notNull(),
   position: jsonb("position").notNull().default({ x: 0, y: 0 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -91,8 +112,12 @@ export const executionLogs = pgTable("execution_logs", {
   level: text("level").notNull().default("info"),
   message: text("message").notNull(),
   metadata: jsonb("metadata"),
+  stepIndex: integer("step_index"),
   timestamp: timestamp("timestamp").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_execution_logs_execution_id").on(table.executionId),
+  index("idx_execution_logs_timestamp").on(table.timestamp),
+]);
 
 export const templates = pgTable("templates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -240,6 +265,92 @@ export const insertExecutionCostSchema = createInsertSchema(executionCosts).omit
 export const insertTagSchema = createInsertSchema(tags).omit({ id: true, createdAt: true });
 export const insertWorkflowTagSchema = createInsertSchema(workflowTags).omit({ id: true, createdAt: true });
 
+// Phase 3A: Workflow Versions Table
+export const workflowVersions = pgTable("workflow_versions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workflowId: varchar("workflow_id").notNull().references(() => workflows.id, { onDelete: "cascade" }),
+  version: integer("version").notNull(),
+  commitMessage: text("commit_message"),
+  createdBy: varchar("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  workflowData: jsonb("workflow_data").notNull(), // Stores nodes, edges, agents
+  parentVersionId: varchar("parent_version_id"),
+  tag: text("tag"), // v1.0, production, stable, etc.
+  executionCount: integer("execution_count").default(0).notNull(),
+  successRate: integer("success_rate").default(0), // 0-100
+  avgDuration: integer("avg_duration"), // milliseconds
+}, (table) => [
+  index("idx_workflow_versions").on(table.workflowId, table.version.desc()),
+]);
+
+// Phase 3A: Workflow Schedules Table
+export const workflowSchedules = pgTable("workflow_schedules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workflowId: varchar("workflow_id").notNull().references(() => workflows.id, { onDelete: "cascade" }),
+  cronExpression: text("cron_expression").notNull(),
+  enabled: boolean("enabled").default(true).notNull(),
+  timezone: text("timezone").default("UTC").notNull(),
+  nextRunAt: timestamp("next_run_at"),
+  lastRunAt: timestamp("last_run_at"),
+  executionCount: integer("execution_count").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Phase 3A: Workflow Webhooks Table
+export const workflowWebhooks = pgTable("workflow_webhooks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workflowId: varchar("workflow_id").notNull().references(() => workflows.id, { onDelete: "cascade" }),
+  webhookUrl: text("webhook_url").notNull(),
+  secretKey: text("secret_key").notNull(),
+  enabled: boolean("enabled").default(true).notNull(),
+  triggerCount: integer("trigger_count").default(0).notNull(),
+  lastTriggeredAt: timestamp("last_triggered_at"),
+  ipWhitelist: jsonb("ip_whitelist"), // Array of allowed IPs
+  payloadTransformer: jsonb("payload_transformer"), // Mapping configuration
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_webhook_url").on(table.webhookUrl),
+]);
+
+// Phase 3A: Execution Costs Table
+export const executionCosts = pgTable("execution_costs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  executionId: varchar("execution_id").notNull().references(() => executions.id, { onDelete: "cascade" }),
+  agentId: varchar("agent_id").notNull().references(() => agents.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(),
+  model: text("model").notNull(),
+  inputTokens: integer("input_tokens").default(0).notNull(),
+  outputTokens: integer("output_tokens").default(0).notNull(),
+  totalTokens: integer("total_tokens").default(0).notNull(),
+  estimatedCost: integer("estimated_cost").default(0).notNull(), // Cost in cents
+  currency: text("currency").default("USD").notNull(),
+  calculatedAt: timestamp("calculated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_execution_costs").on(table.executionId, table.agentId),
+]);
+
+// Phase 3A: Provider Pricing Table
+export const providerPricing = pgTable("provider_pricing", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  provider: text("provider").notNull(),
+  model: text("model").notNull(),
+  inputTokenPrice: integer("input_token_price").notNull(), // Price per 1M tokens in cents
+  outputTokenPrice: integer("output_token_price").notNull(), // Price per 1M tokens in cents
+  currency: text("currency").default("USD").notNull(),
+  effectiveDate: timestamp("effective_date").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_provider_pricing").on(table.provider, table.model),
+]);
+
+export const insertWorkflowVersionSchema = createInsertSchema(workflowVersions).omit({ id: true, createdAt: true });
+export const insertWorkflowScheduleSchema = createInsertSchema(workflowSchedules).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertWorkflowWebhookSchema = createInsertSchema(workflowWebhooks).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertExecutionCostSchema = createInsertSchema(executionCosts).omit({ id: true, calculatedAt: true });
+export const insertProviderPricingSchema = createInsertSchema(providerPricing).omit({ id: true, effectiveDate: true, updatedAt: true });
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;
@@ -291,3 +402,8 @@ export type Tag = typeof tags.$inferSelect;
 
 export type InsertWorkflowTag = z.infer<typeof insertWorkflowTagSchema>;
 export type WorkflowTag = typeof workflowTags.$inferSelect;
+export type InsertExecutionCost = z.infer<typeof insertExecutionCostSchema>;
+export type ExecutionCost = typeof executionCosts.$inferSelect;
+
+export type InsertProviderPricing = z.infer<typeof insertProviderPricingSchema>;
+export type ProviderPricing = typeof providerPricing.$inferSelect;
