@@ -23,6 +23,22 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  // GitHub OAuth tokens (per-user)
+  githubAccessToken: text("github_access_token"),
+  githubRefreshToken: text("github_refresh_token"),
+  githubTokenExpiry: timestamp("github_token_expiry"),
+  // API Keys (encrypted)
+  openaiApiKey: text("openai_api_key"),
+  anthropicApiKey: text("anthropic_api_key"),
+  geminiApiKey: text("gemini_api_key"),
+  // User Preferences
+  defaultProvider: text("default_provider").default("openai"),
+  defaultModel: text("default_model"),
+  theme: text("theme").default("system"),
+  emailNotifications: boolean("email_notifications").default(true),
+  inAppNotifications: boolean("in_app_notifications").default(true),
+  executionTimeout: integer("execution_timeout").default(300),
+  autoSaveInterval: integer("auto_save_interval").default(30),
   // Legacy fields for backward compatibility (deprecated)
   replitId: text("replit_id").unique(),
   username: text("username"),
@@ -54,6 +70,11 @@ export const agents = pgTable("agents", {
   temperature: integer("temperature").default(70),
   maxTokens: integer("max_tokens").default(1000),
   capabilities: jsonb("capabilities").default([]),
+  // Advanced settings
+  topP: integer("top_p"),
+  frequencyPenalty: integer("frequency_penalty"),
+  presencePenalty: integer("presence_penalty"),
+  stopSequences: jsonb("stop_sequences").default([]),
   nodeId: text("node_id").notNull(),
   position: jsonb("position").notNull().default({ x: 0, y: 0 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
