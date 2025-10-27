@@ -62,6 +62,8 @@ export interface IStorage {
   getExecutionsByWorkflowId(workflowId: string): Promise<Execution[]>;
   getExecutionsByUserId(userId: string): Promise<Execution[]>;
   updateExecution(id: string, execution: Partial<InsertExecution>): Promise<Execution | undefined>;
+  deleteExecution(id: string): Promise<void>;
+  deleteExecutionsByUserId(userId: string): Promise<number>;
   
   // Agent Messages
   createAgentMessage(message: InsertAgentMessage): Promise<AgentMessage>;
@@ -230,6 +232,15 @@ export class DatabaseStorage implements IStorage {
       .where(eq(executions.id, id))
       .returning();
     return updated;
+  }
+
+  async deleteExecution(id: string): Promise<void> {
+    await db.delete(executions).where(eq(executions.id, id));
+  }
+
+  async deleteExecutionsByUserId(userId: string): Promise<number> {
+    const result = await db.delete(executions).where(eq(executions.userId, userId)).returning({ id: executions.id });
+    return result.length;
   }
 
   // Agent Messages

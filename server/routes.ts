@@ -596,6 +596,17 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  // Settings - Danger Zone
+  app.delete("/api/settings/executions", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const deleted = await storage.deleteExecutionsByUserId(userId);
+      res.json({ success: true, deleted });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Templates
   app.get("/api/templates", async (req, res) => {
     try {
