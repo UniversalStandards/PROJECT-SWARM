@@ -1,9 +1,8 @@
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import {
   ReactFlow,
   ReactFlowProvider,
   Controls,
-  Background,
   applyNodeChanges,
   applyEdgeChanges,
   addEdge,
@@ -12,31 +11,36 @@ import {
   NodeChange,
   EdgeChange,
   Connection,
-  BackgroundVariant,
   Panel,
   useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   Bot, 
-  Play, 
-  Save, 
   Plus, 
   Settings, 
   Code, 
-  Database, 
-  Search,
+  Database,
+  Search as SearchIcon,
   Shield,
-  Sparkles
+  Sparkles,
+  FileJson,
 } from 'lucide-react';
 import { AgentNode } from '@/components/workflow/agent-node';
 import { AgentConfigPanel } from '@/components/workflow/agent-config-panel';
 import { ExecutionInputDialog } from '@/components/workflow/execution-input-dialog';
 import { WorkflowMinimap } from '@/components/workflow/workflow-minimap';
 import { WorkflowToolbar } from '@/components/workflow/workflow-toolbar';
+import { BuilderToolbar } from '@/components/workflow/builder-toolbar';
+import { LayoutControls } from '@/components/workflow/layout-controls';
+import { Minimap } from '@/components/workflow/minimap';
+import { ConnectionValidator, useWorkflowValidation } from '@/components/workflow/connection-validator';
+import { NodeContextMenu, useNodeClipboard } from '@/components/workflow/node-context-menu';
+import { NodeSearch } from '@/components/workflow/node-search';
+import { WorkflowCanvas, useZoomControls, ZoomIndicator } from '@/components/workflow/workflow-canvas';
 import { useToast } from '@/hooks/use-toast';
 import { useGridSnapping } from '@/hooks/useGridSnapping';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -45,6 +49,13 @@ import { useParams, useLocation } from 'wouter';
 import { applyLayout, type LayoutAlgorithm } from '@/lib/workflow-layout';
 import { validateConnection, getConnectionStyle } from '@/lib/connection-validator';
 import type { Workflow } from '@shared/schema';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 
 const nodeTypes = {
   agent: AgentNode,
@@ -59,6 +70,7 @@ function WorkflowBuilderContent() {
   const [nodes, setNodes] = useState<Node[]>(initialNodes);
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const [selectedNodes, setSelectedNodes] = useState<Node[]>([]);
   const [workflowName, setWorkflowName] = useState('Untitled Workflow');
   const [workflowDescription, setWorkflowDescription] = useState('');
   const [workflowId, setWorkflowId] = useState<string | null>(params.id || null);
@@ -80,6 +92,21 @@ function WorkflowBuilderContent() {
     gridSize: 20,
     showGrid: true,
   });
+  const [showGrid, setShowGrid] = useState(true);
+  const [snapToGrid, setSnapToGrid] = useState(true);
+  const [showMinimap, setShowMinimap] = useState(true);
+  const [showValidation, setShowValidation] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [gridSize] = useState(20);
+  const [highlightedNodes, setHighlightedNodes] = useState<string[]>([]);
+  const { toast } = useToast();
+  const { copy, paste, canPaste } = useNodeClipboard();
+  
+  // Get zoom controls (only works inside ReactFlowProvider)
+  const zoomControls = useZoomControls();
+  
+  // Validation
+  const { isValid, hasErrors, warningCount } = useWorkflowValidation(nodes, edges);
 
   // Fetch existing workflow if ID is provided
   const { data: workflow, isLoading } = useQuery<Workflow>({
@@ -143,6 +170,15 @@ function WorkflowBuilderContent() {
       setNodes((nds) => applyNodeChanges(snappedChanges, nds));
     },
     [applySnapping]
+      setNodes((nds) => {
+        const updated = applyNodeChanges(changes, nds);
+        // Track selected nodes
+        const selected = updated.filter(n => n.selected);
+        setSelectedNodes(selected);
+        return updated;
+      });
+    },
+    []
   );
 
   const onEdgesChange = useCallback(
@@ -498,30 +534,198 @@ function WorkflowBuilderContent() {
   }, [handleGridKeyDown, handleGridKeyUp, handleFitView, handleToggleGrid, handleToggleMinimap, 
       handleZoomToActual, handleZoomIn, handleZoomOut, nodes, edges, setSelectedNode]);
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check if we're in an input field
+      const target = e.target as HTMLElement;
+      const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+
+      // Ctrl/Cmd combinations
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.key.toLowerCase()) {
+          case 's':
+            e.preventDefault();
+            saveWorkflow();
+            break;
+          case 'c':
+            if (!isInputField && selectedNodes.length > 0) {
+              e.preventDefault();
+              copy(selectedNodes);
+              toast({ title: 'Copied', description: `${selectedNodes.length} node(s) copied` });
+            }
+            break;
+          case 'v':
+            if (!isInputField && canPaste) {
+              e.preventDefault();
+              const pastedNodes = paste();
+              setNodes([...nodes, ...pastedNodes]);
+              toast({ title: 'Pasted', description: `${pastedNodes.length} node(s) pasted` });
+            }
+            break;
+          case 'a':
+            if (!isInputField) {
+              e.preventDefault();
+              setNodes(nodes.map(n => ({ ...n, selected: true })));
+            }
+            break;
+          case 'f':
+            if (!isInputField) {
+              e.preventDefault();
+              setShowSearch(!showSearch);
+            }
+            break;
+          case 'z':
+            if (!isInputField) {
+              e.preventDefault();
+              // TODO: Implement undo
+            }
+            break;
+          case 'y':
+            if (!isInputField) {
+              e.preventDefault();
+              // TODO: Implement redo
+            }
+            break;
+        }
+      } else {
+        // Non-modifier keys
+        switch (e.key.toLowerCase()) {
+          case 'delete':
+          case 'backspace':
+            if (!isInputField && selectedNodes.length > 0) {
+              e.preventDefault();
+              const idsToDelete = selectedNodes.map(n => n.id);
+              setNodes(nodes.filter(n => !idsToDelete.includes(n.id)));
+              setEdges(edges.filter(e => !idsToDelete.includes(e.source) && !idsToDelete.includes(e.target)));
+              toast({ title: 'Deleted', description: `${selectedNodes.length} node(s) deleted` });
+            }
+            break;
+          case 'g':
+            if (!isInputField) {
+              e.preventDefault();
+              setShowGrid(!showGrid);
+            }
+            break;
+          case 's':
+            if (!isInputField) {
+              e.preventDefault();
+              setSnapToGrid(!snapToGrid);
+              toast({ title: snapToGrid ? 'Snap disabled' : 'Snap enabled' });
+            }
+            break;
+          case 'm':
+            if (!isInputField) {
+              e.preventDefault();
+              setShowMinimap(!showMinimap);
+            }
+            break;
+          case 'v':
+            if (!isInputField) {
+              e.preventDefault();
+              setShowValidation(!showValidation);
+            }
+            break;
+          case 'f':
+            if (!isInputField) {
+              e.preventDefault();
+              zoomControls.fitView();
+            }
+            break;
+          case 'escape':
+            setSelectedNode(null);
+            setShowSearch(false);
+            setShowValidation(false);
+            break;
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [nodes, edges, selectedNodes, showGrid, snapToGrid, showMinimap, showValidation, showSearch, canPaste, copy, paste, toast, zoomControls]);
+
+  // Node operations handlers
+  const handleNodeDuplicate = useCallback((node: Node) => {
+    const newNode = {
+      ...node,
+      id: `${node.id}-copy-${Date.now()}`,
+      position: { x: node.position.x + 50, y: node.position.y + 50 },
+      data: { ...node.data, label: `${node.data?.label} (Copy)` },
+    };
+    setNodes([...nodes, newNode]);
+  }, [nodes]);
+
+  const handleNodeDelete = useCallback((node: Node) => {
+    setNodes(nodes.filter(n => n.id !== node.id));
+    setEdges(edges.filter(e => e.source !== node.id && e.target !== node.id));
+  }, [nodes, edges]);
+
+  const handleNodeLock = useCallback((node: Node, locked: boolean) => {
+    setNodes(nodes.map(n => 
+      n.id === node.id ? { ...n, data: { ...n.data, locked }, draggable: !locked } : n
+    ));
+  }, [nodes]);
+
+  const handleNodesUpdate = useCallback((updatedNodes: Node[]) => {
+    setNodes(updatedNodes);
+  }, []);
+
+  const handleNodeSelect = useCallback((nodeId: string) => {
+    // Focus on node
+    const node = nodes.find(n => n.id === nodeId);
+    if (node) {
+      setSelectedNode(node);
+      // Optionally zoom to node
+      // This would require ReactFlow instance
+    }
+    setShowSearch(false);
+  }, [nodes]);
+  // Show loading state when fetching workflow
+  if (workflowId && isLoading) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-muted-foreground">Loading workflow...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen w-full flex flex-col">
-      <header className="flex items-center justify-between px-6 py-3 border-b bg-card">
-        <div className="flex items-center gap-4 flex-1 max-w-md">
-          <Sparkles className="w-5 h-5 text-primary" />
-          <Input
-            value={workflowName}
-            onChange={(e) => setWorkflowName(e.target.value)}
-            className="text-lg font-semibold border-0 bg-transparent focus-visible:ring-0 p-0"
-            data-testid="input-workflow-name"
-          />
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={saveWorkflow} data-testid="button-save-workflow">
-            <Save className="w-4 h-4 mr-2" />
-            Save
-          </Button>
-          <Button size="sm" onClick={handleExecuteClick} data-testid="button-execute-workflow">
-            <Play className="w-4 h-4 mr-2" />
-            Execute
-          </Button>
-        </div>
-      </header>
+      {/* Enhanced Toolbar */}
+      <BuilderToolbar
+        workflowName={workflowName}
+        workflowStatus={executeWorkflowMutation.isPending ? 'running' : workflowId ? 'saved' : 'draft'}
+        canUndo={false} // TODO: Implement undo/redo
+        canRedo={false}
+        canCopy={selectedNodes.length > 0}
+        canPaste={canPaste}
+        canDelete={selectedNodes.length > 0}
+        showGrid={showGrid}
+        showMinimap={showMinimap}
+        showValidation={showValidation}
+        validationErrors={hasErrors ? 1 : 0}
+        onSave={saveWorkflow}
+        onExport={() => {
+          const data = JSON.stringify({ nodes, edges, name: workflowName }, null, 2);
+          const blob = new Blob([data], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${workflowName}.json`;
+          a.click();
+        }}
+        onZoomIn={() => zoomControls.zoomIn()}
+        onZoomOut={() => zoomControls.zoomOut()}
+        onFitView={() => zoomControls.fitView()}
+        onToggleGrid={() => setShowGrid(!showGrid)}
+        onToggleMinimap={() => setShowMinimap(!showMinimap)}
+        onToggleValidation={() => setShowValidation(!showValidation)}
+        onExecute={handleExecuteClick}
+      />
 
       <div className="flex-1 relative">
         <ReactFlow
@@ -641,7 +845,121 @@ function WorkflowBuilderContent() {
             </Card>
           </Panel>
         </ReactFlow>
+        <NodeContextMenu
+          node={selectedNode || undefined}
+          onDuplicate={handleNodeDuplicate}
+          onDelete={handleNodeDelete}
+          onCopy={(node) => copy([node])}
+          onLock={handleNodeLock}
+        >
+          <WorkflowCanvas
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onNodeClick={onNodeClick}
+            nodeTypes={nodeTypes}
+            showGrid={showGrid}
+            gridSize={gridSize}
+            snapToGridEnabled={snapToGrid}
+          >
+            <Controls />
+            
+            {/* Add Agent Panel */}
+            <Panel position="top-left" className="m-4">
+              <Card className="w-64">
+                <CardContent className="p-4">
+                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <Plus className="w-4 h-4" />
+                    Add Agent
+                  </h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => addAgentNode('Coordinator')}
+                      className="justify-start gap-2"
+                      data-testid="button-add-coordinator"
+                    >
+                      <Bot className="w-4 h-4" />
+                      Coordinator
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => addAgentNode('Coder')}
+                      className="justify-start gap-2"
+                      data-testid="button-add-coder"
+                    >
+                      <Code className="w-4 h-4" />
+                      Coder
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => addAgentNode('Researcher')}
+                      className="justify-start gap-2"
+                      data-testid="button-add-researcher"
+                    >
+                      <SearchIcon className="w-4 h-4" />
+                      Researcher
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => addAgentNode('Database')}
+                      className="justify-start gap-2"
+                      data-testid="button-add-database"
+                    >
+                      <Database className="w-4 h-4" />
+                      Database
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => addAgentNode('Security')}
+                      className="justify-start gap-2"
+                      data-testid="button-add-security"
+                    >
+                      <Shield className="w-4 h-4" />
+                      Security
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => addAgentNode('Custom')}
+                      className="justify-start gap-2"
+                      data-testid="button-add-custom"
+                    >
+                      <Settings className="w-4 h-4" />
+                      Custom
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </Panel>
 
+            {/* Layout Controls Panel */}
+            <Panel position="top-right" className="m-4">
+              <LayoutControls
+                nodes={nodes}
+                edges={edges}
+                selectedNodes={selectedNodes}
+                onNodesChange={handleNodesUpdate}
+                onReset={() => zoomControls.fitView()}
+              />
+            </Panel>
+
+            {/* Minimap */}
+            {showMinimap && <Minimap />}
+
+            {/* Zoom Indicator */}
+            <ZoomIndicator />
+          </WorkflowCanvas>
+        </NodeContextMenu>
+
+        {/* Agent Config Panel */}
         {selectedNode && (
           <AgentConfigPanel
             node={selectedNode}
@@ -650,6 +968,52 @@ function WorkflowBuilderContent() {
           />
         )}
 
+        {/* Validation Panel */}
+        <Sheet open={showValidation} onOpenChange={setShowValidation}>
+          <SheetContent side="right" className="w-[400px] sm:w-[540px]">
+            <SheetHeader>
+              <SheetTitle className="flex items-center gap-2">
+                <FileJson className="w-5 h-5" />
+                Workflow Validation
+              </SheetTitle>
+              <SheetDescription>
+                Check your workflow for errors and warnings
+              </SheetDescription>
+            </SheetHeader>
+            <div className="mt-6">
+              <ConnectionValidator
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={setNodes}
+                onEdgesChange={setEdges}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
+
+        {/* Search Panel */}
+        <Sheet open={showSearch} onOpenChange={setShowSearch}>
+          <SheetContent side="left" className="w-[400px]">
+            <SheetHeader>
+              <SheetTitle className="flex items-center gap-2">
+                <SearchIcon className="w-5 h-5" />
+                Search Nodes
+              </SheetTitle>
+              <SheetDescription>
+                Find and filter workflow nodes
+              </SheetDescription>
+            </SheetHeader>
+            <div className="mt-6">
+              <NodeSearch
+                nodes={nodes}
+                onNodeSelect={handleNodeSelect}
+                onNodesHighlight={setHighlightedNodes}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
+
+        {/* Execution Dialog */}
         <ExecutionInputDialog
           open={showExecutionDialog}
           onClose={() => setShowExecutionDialog(false)}
@@ -661,6 +1025,7 @@ function WorkflowBuilderContent() {
   );
 }
 
+// Wrap the component in ReactFlowProvider
 export default function WorkflowBuilder() {
   return (
     <ReactFlowProvider>
