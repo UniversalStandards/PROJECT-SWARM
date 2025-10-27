@@ -74,6 +74,14 @@
 | Item | Status | Priority | Description | Technical Notes | 🆕 New | 👤 Assigned | 🔧 Being Worked | 🚫 Stuck | ✅ Complete |
 |------|--------|----------|-------------|-----------------|--------|-------------|-----------------|----------|-------------|
 | **Enhanced Knowledge Base** | 📋 Planned | 🟡 Medium | Advanced search, tagging, knowledge graph visualization | Vector search, semantic retrieval improvements | ☑️ | ☐ @_________ | ☐ | ☐ | ☐ |
+| **Workflow Versioning** | ✅ Implemented | 🔴 High | Save workflow versions, rollback capability | Git-like version control for workflows with UI | ☑️ | ☑️ @UniversalStandards | ☑️ | ☐ | ☑️ |
+| **Advanced Templates** | 📋 Planned | 🟡 Medium | Industry-specific templates, template marketplace | Pre-built workflows for common use cases | ☑️ | ☐ @_________ | ☐ | ☐ | ☐ |
+| **GitHub Repo Integration** | 📋 Planned | 🔴 High | Direct file editing, PR creation, code review agents | Deep integration beyond current listing/creation | ☑️ | ☐ @_________ | ☐ | ☐ | ☐ |
+| **Multi-Provider Fallback** | 📋 Planned | 🟡 Medium | Automatic provider switching on failure | If OpenAI fails, retry with Anthropic/Gemini | ☑️ | ☐ @_________ | ☐ | ☐ | ☐ |
+| **Webhook Triggers** | ✅ Implemented | 🔴 High | Start workflows from external events | Backend complete with webhook handler and validation | ☑️ | ☑️ @UniversalStandards | ☑️ | ☐ | ☑️ |
+| **Scheduled Executions** | ✅ Implemented | 🔴 High | Cron-based workflow execution | Backend complete with node-cron scheduler | ☑️ | ☑️ @UniversalStandards | ☑️ | ☐ | ☑️ |
+| **Cost Tracking** | ✅ Implemented | 🔴 High | Track AI provider costs per workflow/execution | Full cost tracking with analytics dashboard | ☑️ | ☑️ @UniversalStandards | ☑️ | ☐ | ☑️ |
+| **Workflow Export/Import** | ✅ Implemented | 🟡 Medium | Export workflows as JSON, import from files | Backend complete with validation | ☑️ | ☑️ @UniversalStandards | ☑️ | ☐ | ☑️ |
 | **Workflow Versioning** | 📋 Planned | 🔴 High | Save workflow versions, rollback capability | Git-like version control for workflows | ☑️ | ☑️ @GitHub-Copilot | ☑️ | ☐ | ☑️ |
 | **Advanced Templates** | 📋 Planned | 🟡 Medium | Industry-specific templates, template marketplace | Pre-built workflows for common use cases | ☑️ | ☐ @_________ | ☐ | ☐ | ☐ |
 | **GitHub Repo Integration** | 📋 Planned | 🔴 High | Direct file editing, PR creation, code review agents | Deep integration beyond current listing/creation | ☑️ | ☐ @_________ | ☐ | ☐ | ☐ |
@@ -88,6 +96,9 @@
 | **Real-time Collaboration** | 💡 Future | ⚪ Low | Multiple users editing same workflow simultaneously | WebSocket-based presence and live updates | ☑️ | ☐ @_________ | ☐ | ☐ | ☐ |
 | **Agent Marketplace** | 💡 Future | 🟡 Medium | Share and discover pre-configured agents | Community-contributed agent templates | ☑️ | ☐ @_________ | ☐ | ☐ | ☐ |
 | **Performance Analytics** | 💡 Future | 🟡 Medium | Track execution times, costs, success rates over time | Dashboard with charts and insights | ☑️ | ☐ @_________ | ☐ | ☐ | ☐ |
+
+| **Advanced Debugging** | 💡 Future | 🟡 Medium | Breakpoints, step-through execution, variable inspection | Debug workflows like code | ☑️ | ☐ @_________ | ☐ | ☐ | ☐ |
+
 | **Webhook Triggers** | 💡 Future | 🔴 High | Start workflows from external events | GitHub webhooks, Slack triggers, API webhooks | ☑️ | ☑️ @GitHub-Copilot | ☑️ | ☐ | ☑️ |
 | **Scheduled Executions** | 💡 Future | 🔴 High | Cron-based workflow execution | Run workflows on schedule (daily reports, etc.) | ☑️ | ☑️ @GitHub-Copilot | ☑️ | ☐ | ☑️ |
 | **Advanced Debugging** | 💡 Future | 🟡 Medium | Breakpoints, step-through execution, variable inspection | Debug workflows like code | ☑️ | ☐ @_________ | ☐ | ☐ | ☐ |
