@@ -37,6 +37,7 @@ export interface IStorage {
   // Users (Replit Auth)
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  updateUser(id: string, user: Partial<InsertUser>): Promise<User | undefined>;
   // Legacy user methods (for backward compatibility)
   createUser(user: InsertUser): Promise<User>;
   getUserById(id: string): Promise<User | undefined>;
@@ -75,6 +76,8 @@ export interface IStorage {
   getTemplateById(id: string): Promise<Template | undefined>;
   getAllTemplates(): Promise<Template[]>;
   getFeaturedTemplates(): Promise<Template[]>;
+  updateTemplate(id: string, template: Partial<InsertTemplate>): Promise<Template | undefined>;
+  deleteTemplate(id: string): Promise<void>;
   updateTemplateUsageCount(id: string): Promise<void>;
   
   // Assistant Chats
@@ -122,6 +125,15 @@ export class DatabaseStorage implements IStorage {
   async getUserById(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
+  }
+
+  async updateUser(id: string, userData: Partial<InsertUser>): Promise<User | undefined> {
+    const [updated] = await db
+      .update(users)
+      .set({ ...userData, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return updated;
   }
 
   // Workflows
@@ -269,6 +281,19 @@ export class DatabaseStorage implements IStorage {
       .from(templates)
       .where(eq(templates.featured, true))
       .orderBy(desc(templates.usageCount));
+  }
+
+  async updateTemplate(id: string, template: Partial<InsertTemplate>): Promise<Template | undefined> {
+    const [updated] = await db
+      .update(templates)
+      .set(template)
+      .where(eq(templates.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteTemplate(id: string): Promise<void> {
+    await db.delete(templates).where(eq(templates.id, id));
   }
 
   async updateTemplateUsageCount(id: string): Promise<void> {
