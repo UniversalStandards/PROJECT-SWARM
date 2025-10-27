@@ -58,20 +58,23 @@ export class WorkflowOrchestrator {
       const nodeResults = new Map<string, any>();
       const executionOrder = this.topologicalSort(nodes, edges);
 
-      for (const nodeId of executionOrder) {
+      for (let stepIndex = 0; stepIndex < executionOrder.length; stepIndex++) {
+        const nodeId = executionOrder[stepIndex];
         const node = nodes.find(n => n.id === nodeId);
         const agent = agentMap.get(nodeId);
         
         if (!node || !agent) continue;
 
+        const stepStartTime = Date.now();
         // Emit agent started event
         wsManager.emitAgentStarted(execution.id, agent.id, agent.name);
 
         await this.logExecution(
           execution.id, 
           'info', 
-          `Executing agent: ${agent.name} (Provider: ${agent.provider}, Model: ${agent.model})`,
-          agent.id
+          `Step ${stepIndex + 1}/${executionOrder.length}: Starting agent ${agent.name} (Provider: ${agent.provider}, Model: ${agent.model})`,
+          agent.id,
+          stepIndex
         );
 
         // Fetch relevant knowledge for this agent
@@ -112,6 +115,8 @@ export class WorkflowOrchestrator {
           }
         }
 
+        try {
+          const result = await aiExecutor.executeAgent(agent, {
         // Debug: Log agent details
         await this.logExecution(
           execution.id,
@@ -130,6 +135,7 @@ export class WorkflowOrchestrator {
             temperature: agent.temperature || 70,
             maxTokens: agent.maxTokens || 1000,
             knowledgeContext: relevantKnowledge,
+          });
           },
           3 // max retries
         );
@@ -156,14 +162,21 @@ export class WorkflowOrchestrator {
           }
         }
 
-        await storage.createAgentMessage({
-          executionId: execution.id,
-          agentId: agent.id,
-          role: 'assistant',
-          content: result.content,
-          tokenCount: result.tokenCount,
-        });
+          await storage.createAgentMessage({
+            executionId: execution.id,
+            agentId: agent.id,
+            role: 'assistant',
+            content: result.content,
+            tokenCount: result.tokenCount,
+          });
 
+          // Extract and store new knowledge from agent response
+          await this.extractAndStoreKnowledge(
+            workflow.userId,
+            agent,
+            result.content,
+            execution.id
+          );
         // Log if fallback was used
         if (result.fallbackUsed) {
           await this.logExecution(
@@ -184,8 +197,26 @@ export class WorkflowOrchestrator {
           execution.id
         );
 
-        nodeResults.set(nodeId, result);
+          nodeResults.set(nodeId, result);
 
+          const stepDuration = Date.now() - stepStartTime;
+          await this.logExecution(
+            execution.id,
+            'info',
+            `Step ${stepIndex + 1} completed: ${agent.name} finished in ${stepDuration}ms with ${result.tokenCount} tokens`,
+            agent.id,
+            stepIndex
+          );
+        } catch (stepError: any) {
+          await this.logExecution(
+            execution.id,
+            'error',
+            `Step ${stepIndex + 1} failed: ${stepError.message}`,
+            agent.id,
+            stepIndex
+          );
+          throw stepError;
+        }
         // Emit agent completed event
         wsManager.emitAgentCompleted(execution.id, agent.id, agent.name, result);
 
@@ -462,13 +493,17 @@ export class WorkflowOrchestrator {
     executionId: string,
     level: string,
     message: string,
-    agentId?: string
+    agentId?: string,
+    stepIndex?: number,
+    metadata?: any
   ): Promise<void> {
     await storage.createExecutionLog({
       executionId,
       agentId: agentId || null,
       level,
       message,
+      stepIndex: stepIndex !== undefined ? stepIndex : null,
+      metadata: metadata || null,
     });
 
     // Emit log via WebSocket

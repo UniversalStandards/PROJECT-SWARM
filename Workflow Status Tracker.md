@@ -22,6 +22,8 @@
 | **Per-User GitHub Auth** | ✅ Fixed | 🔴 High | GitHub integration now uses per-user OAuth tokens with encryption | Implemented OAuth 2.0 flow, token encryption, CSRF protection | ☑️ | ☑️ @UniversalStandards | ☑️ | ☐ | ☑️ |
 | **Workflow Execution Engine** | ❌ Untested | 🔴 Critical | Orchestrator and executor exist but execution flow not verified end-to-end | Need to test topological sorting, agent coordination, error propagation | ☑️ | ☑️ @UniversalStandards | ☑️ | ☐ | ☐ |
 | **Knowledge Base Persistence** | ❌ Broken | 🔴 High | Knowledge extraction/retrieval during execution not verified | Database schema exists but integration with execution untested | ☑️ | ☑️ @UniversalStandards | ☑️ | ☐ | ☐ |
+| **Real-time Execution Monitoring** | ✅ Implemented | 🟡 Medium | Live execution tracking UI with polling-based updates | Uses polling (2s interval) for real-time updates | ☑️ | ☑️ @UniversalStandards | ☐ | ☐ | ☑️ |
+| **Agent Message Visualization** | ✅ Implemented | 🟡 Medium | Complete message flow visualization with filtering and export | Includes detailed execution view, timeline, logs, and comparison | ☑️ | ☑️ @UniversalStandards | ☐ | ☐ | ☑️ |
 | **Real-time Execution Monitoring** | ❌ Broken | 🟡 Medium | Live execution tracking UI exists but WebSocket/polling not implemented | Execution monitor page needs real-time updates | ☑️ | ☐ @_________ | ☐ | ☐ | ☐ |
 | **Per-User GitHub Auth** | ❌ Broken | 🔴 High | GitHub integration uses workspace-level token shared across all users | Security issue for multi-tenant deployments; need custom OAuth per-user | ☑️ | ☑️ @UniversalStandards | ☑️ | ☐ | ☐ |
 | **Workflow Execution Engine** | ✅ Fixed | 🔴 Critical | Orchestrator with topological sorting, error propagation, retry logic implemented | Validates workflows, handles errors, retries transient failures | ☑️ | ☑️ @UniversalStandards | ☐ | ☐ | ☑️ |
@@ -38,6 +40,8 @@
 | **Template System** | ⚠️ Backend Complete | 🟡 Medium | Backend CRUD implemented, frontend UI optional | Full API: create, edit, delete, duplicate, export templates | ☑️ | ☑️ @UniversalStandards | ☑️ | ☐ | ☐ |
 | **AI Assistant Chat** | ⚠️ Untested | ⚪ Low | Chat UI exists with OpenAI integration but not verified | Need to test message persistence and streaming responses | ☑️ | ☐ @_________ | ☐ | ☐ | ☐ |
 | **Agent Capabilities Config** | ⚠️ Partial | 🟡 Medium | UI for adding capabilities exists but execution integration untested | Capabilities saved to DB but not used during execution | ☑️ | ☐ @_________ | ☐ | ☐ | ☐ |
+| **Settings Page** | ⚠️ Empty | ⚪ Low | Page exists but no actual settings implemented | Need API keys management, preferences, etc. | ☑️ | ☐ @_________ | ☐ | ☐ | ☐ |
+| **Execution Logs Detail** | ✅ Implemented | 🟡 Medium | Full detailed execution view with timeline, logs, messages, and metrics | Includes filtering, search, export capabilities | ☑️ | ☑️ @UniversalStandards | ☐ | ☐ | ☑️ |
 | **Settings Page** | ✅ Complete | ⚪ Low | Full settings with API keys, preferences, danger zone | GitHub OAuth, encrypted API keys, user prefs, data export | ☑️ | ☑️ @UniversalStandards | ☑️ | ☐ | ☑️ |
 | **Execution Logs Detail** | ⚠️ Basic | 🟡 Medium | Can view executions list but detailed logs/steps not shown | Need step-by-step execution breakdown | ☑️ | ☐ @_________ | ☐ | ☐ | ☐ |
 

@@ -71,7 +71,12 @@ export interface IStorage {
   
   // Execution Logs
   createExecutionLog(log: InsertExecutionLog): Promise<ExecutionLog>;
-  getLogsByExecutionId(executionId: string): Promise<ExecutionLog[]>;
+  getLogsByExecutionId(executionId: string, filters?: {
+    level?: string;
+    agentId?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<ExecutionLog[]>;
   
   // Templates
   createTemplate(template: InsertTemplate): Promise<Template>;
@@ -263,12 +268,41 @@ export class DatabaseStorage implements IStorage {
     return newLog;
   }
 
-  async getLogsByExecutionId(executionId: string): Promise<ExecutionLog[]> {
-    return await db
+  async getLogsByExecutionId(executionId: string, filters?: {
+    level?: string;
+    agentId?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<ExecutionLog[]> {
+    let query = db
       .select()
       .from(executionLogs)
       .where(eq(executionLogs.executionId, executionId))
       .orderBy(executionLogs.timestamp);
+    
+    if (filters?.level) {
+      query = query.where(and(
+        eq(executionLogs.executionId, executionId),
+        eq(executionLogs.level, filters.level)
+      )) as any;
+    }
+    
+    if (filters?.agentId) {
+      query = query.where(and(
+        eq(executionLogs.executionId, executionId),
+        eq(executionLogs.agentId, filters.agentId)
+      )) as any;
+    }
+    
+    if (filters?.limit) {
+      query = query.limit(filters.limit) as any;
+    }
+    
+    if (filters?.offset) {
+      query = query.offset(filters.offset) as any;
+    }
+    
+    return await query;
   }
 
   // Templates

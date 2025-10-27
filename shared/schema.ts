@@ -112,8 +112,12 @@ export const executionLogs = pgTable("execution_logs", {
   level: text("level").notNull().default("info"),
   message: text("message").notNull(),
   metadata: jsonb("metadata"),
+  stepIndex: integer("step_index"),
   timestamp: timestamp("timestamp").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_execution_logs_execution_id").on(table.executionId),
+  index("idx_execution_logs_timestamp").on(table.timestamp),
+]);
 
 export const templates = pgTable("templates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

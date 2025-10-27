@@ -567,7 +567,15 @@ export async function registerRoutes(app: Express) {
         return res.status(403).json({ error: "Forbidden" });
       }
       
-      const logs = await storage.getLogsByExecutionId(req.params.id);
+      // Parse query parameters for filtering
+      const filters = {
+        level: req.query.level as string | undefined,
+        agentId: req.query.agentId as string | undefined,
+        limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
+        offset: req.query.offset ? parseInt(req.query.offset as string, 10) : undefined,
+      };
+      
+      const logs = await storage.getLogsByExecutionId(req.params.id, filters);
       res.json(logs);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -596,6 +604,137 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  app.get("/api/executions/:id/timeline", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      
+      // Get execution and verify ownership
+      const execution = await storage.getExecutionById(req.params.id);
+      if (!execution) {
+        return res.status(404).json({ error: "Execution not found" });
+      }
+      
+      const workflow = await storage.getWorkflowById(execution.workflowId);
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      
+      // Get logs with step information
+      const logs = await storage.getLogsByExecutionId(req.params.id);
+      const agents = await storage.getAgentsByWorkflowId(execution.workflowId);
+      
+      // Build timeline from logs grouped by stepIndex and agentId
+      const timeline: any[] = [];
+      const stepMap = new Map<number, any>();
+      
+      logs.forEach(log => {
+        if (log.stepIndex !== null && log.stepIndex !== undefined) {
+          if (!stepMap.has(log.stepIndex)) {
+            const agent = agents.find(a => a.id === log.agentId);
+            stepMap.set(log.stepIndex, {
+              stepIndex: log.stepIndex,
+              agentId: log.agentId,
+              agentName: agent?.name || 'Unknown',
+              startTime: log.timestamp,
+              endTime: log.timestamp,
+              status: 'completed',
+              logs: [],
+            });
+          }
+          
+          const step = stepMap.get(log.stepIndex)!;
+          step.logs.push(log);
+          
+          // Update end time if this log is later
+          if (new Date(log.timestamp) > new Date(step.endTime)) {
+            step.endTime = log.timestamp;
+          }
+          
+          // Check for errors
+          if (log.level === 'error') {
+            step.status = 'error';
+          }
+        }
+      });
+      
+      // Convert map to array and calculate durations
+      stepMap.forEach(step => {
+        const start = new Date(step.startTime).getTime();
+        const end = new Date(step.endTime).getTime();
+        step.duration = end - start;
+        timeline.push(step);
+      });
+      
+      // Sort by step index
+      timeline.sort((a, b) => a.stepIndex - b.stepIndex);
+      
+      res.json({
+        execution,
+        timeline,
+        totalDuration: execution.duration,
+        totalSteps: timeline.length,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/executions/compare", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const { executionIds } = req.body;
+      
+      if (!Array.isArray(executionIds) || executionIds.length < 2) {
+        return res.status(400).json({ error: "At least 2 execution IDs required" });
+      }
+      
+      // Fetch all executions and verify ownership
+      const executions = await Promise.all(
+        executionIds.map(id => storage.getExecutionById(id))
+      );
+      
+      // Verify all exist and user has access
+      for (const execution of executions) {
+        if (!execution) {
+          return res.status(404).json({ error: "One or more executions not found" });
+        }
+        
+        const workflow = await storage.getWorkflowById(execution.workflowId);
+        if (!workflow || workflow.userId !== userId) {
+          return res.status(403).json({ error: "Forbidden" });
+        }
+      }
+      
+      // Build comparison data
+      const comparisons = await Promise.all(
+        executions.map(async (execution) => {
+          if (!execution) return null;
+          
+          const logs = await storage.getLogsByExecutionId(execution.id);
+          const messages = await storage.getMessagesByExecutionId(execution.id);
+          
+          return {
+            id: execution.id,
+            workflowId: execution.workflowId,
+            status: execution.status,
+            startedAt: execution.startedAt,
+            completedAt: execution.completedAt,
+            duration: execution.duration,
+            input: execution.input,
+            output: execution.output,
+            error: execution.error,
+            logCount: logs.length,
+            messageCount: messages.length,
+            errorLogs: logs.filter(l => l.level === 'error').length,
+            warningLogs: logs.filter(l => l.level === 'warning').length,
+          };
+        })
+      );
+      
+      res.json({
+        executions: comparisons.filter(c => c !== null),
+        comparisonDate: new Date().toISOString(),
+      });
   // Settings - Danger Zone
   app.delete("/api/settings/executions", isAuthenticated, async (req: any, res) => {
     try {
