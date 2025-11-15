@@ -26,6 +26,10 @@ import AppAssistant from "@/pages/app-assistant";
 import AppSettings from "@/pages/app-settings";
 import WorkflowBuilder from "@/pages/workflow-builder";
 import ExecutionMonitor from "@/pages/execution-monitor";
+import AppAnalytics from "@/pages/app-analytics";
+import AppWorkflowVersions from "@/pages/app-workflow-versions";
+import AppExecutionDetail from "@/pages/app-execution-detail";
+import AppExecutionCompare from "@/pages/app-execution-compare";
 
 import NotFound from "@/pages/not-found";
 
@@ -57,12 +61,16 @@ function AppRouter() {
     <Switch>
       <Route path="/app/workflows" component={AppWorkflows} />
       <Route path="/app/executions" component={AppExecutions} />
+      <Route path="/app/executions/compare" component={AppExecutionCompare} />
+      <Route path="/app/executions/:id/detail" component={AppExecutionDetail} />
+      <Route path="/app/executions/:id" component={ExecutionMonitor} />
       <Route path="/app/templates" component={AppTemplates} />
       <Route path="/app/assistant" component={AppAssistant} />
       <Route path="/app/settings" component={AppSettings} />
+      <Route path="/app/analytics" component={AppAnalytics} />
+      <Route path="/app/workflows/:id/versions" component={AppWorkflowVersions} />
       <Route path="/app/workflow-builder" component={WorkflowBuilder} />
       <Route path="/app/workflow-builder/:id" component={WorkflowBuilder} />
-      <Route path="/app/executions/:id" component={ExecutionMonitor} />
       <Route component={NotFound} />
     </Switch>
   );

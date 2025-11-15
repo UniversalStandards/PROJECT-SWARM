@@ -3,7 +3,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { Link } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Activity, Clock, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Activity, Clock, CheckCircle, XCircle, AlertCircle, GitCompare } from "lucide-react";
 import type { Execution } from "@shared/schema";
 import { format } from "date-fns";
 import { useEffect } from "react";
@@ -55,9 +56,17 @@ export default function AppExecutions() {
 
   return (
     <div className="container py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Executions</h1>
-        <p className="text-muted-foreground mt-2">Monitor and review your workflow execution history</p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Executions</h1>
+          <p className="text-muted-foreground mt-2">Monitor and review your workflow execution history</p>
+        </div>
+        <Link href="/app/executions/compare">
+          <Button variant="outline">
+            <GitCompare className="w-4 h-4 mr-2" />
+            Compare Executions
+          </Button>
+        </Link>
       </div>
 
       {isLoading ? (
