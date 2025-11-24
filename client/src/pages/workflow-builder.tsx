@@ -99,7 +99,6 @@ function WorkflowBuilderContent() {
   const [showSearch, setShowSearch] = useState(false);
   const [gridSize] = useState(20);
   const [highlightedNodes, setHighlightedNodes] = useState<string[]>([]);
-  const { toast } = useToast();
   const { copy, paste, canPaste } = useNodeClipboard();
   
   // Get zoom controls (only works inside ReactFlowProvider)

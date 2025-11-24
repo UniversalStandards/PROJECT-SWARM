@@ -110,3 +110,33 @@ export const NodeContextMenu = memo(({
 });
 
 NodeContextMenu.displayName = 'NodeContextMenu';
+
+/**
+ * Hook for managing clipboard operations
+ */
+export function useNodeClipboard() {
+  const [clipboard, setClipboard] = useState<any[]>([]);
+
+  const copy = useCallback((nodes: any[]) => {
+    setClipboard(nodes);
+  }, []);
+
+  const paste = useCallback((offsetX: number = 50, offsetY: number = 50): any[] => {
+    return clipboard.map(node => ({
+      ...node,
+      id: `${node.id}-copy-${Date.now()}`,
+      position: {
+        x: node.position.x + offsetX,
+        y: node.position.y + offsetY,
+      },
+      data: {
+        ...node.data,
+        label: `${node.data?.label || 'Node'} (Copy)`,
+      },
+    }));
+  }, [clipboard]);
+
+  const canPaste = clipboard.length > 0;
+
+  return { copy, paste, canPaste, clipboard };
+}
