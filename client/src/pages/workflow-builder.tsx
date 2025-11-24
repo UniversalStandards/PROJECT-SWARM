@@ -167,18 +167,15 @@ function WorkflowBuilderContent() {
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
       const snappedChanges = applySnapping(changes);
-      setNodes((nds) => applyNodeChanges(snappedChanges, nds));
-    },
-    [applySnapping]
       setNodes((nds) => {
-        const updated = applyNodeChanges(changes, nds);
+        const updated = applyNodeChanges(snappedChanges, nds);
         // Track selected nodes
         const selected = updated.filter(n => n.selected);
         setSelectedNodes(selected);
         return updated;
       });
     },
-    []
+    [applySnapping]
   );
 
   const onEdgesChange = useCallback(

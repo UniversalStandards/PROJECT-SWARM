@@ -1,35 +1,3 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useQuery } from '@tanstack/react-query';
-
-interface CostData {
-  totalCost: number;
-  totalTokens: number;
-  byProvider: Record<string, {
-    cost: number;
-    tokens: number;
-    count: number;
-  }>;
-  details: Array<{
-    provider: string;
-    model: string;
-    promptTokens: number;
-    completionTokens: number;
-    costUsd: number;
-  }>;
-}
-
-export default function AnalyticsDashboard() {
-  const [dateRange, setDateRange] = useState({ start: '', end: '' });
-
-  const { data: costs, isLoading } = useQuery<CostData>({
-    queryKey: ['/api/analytics/costs', dateRange],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (dateRange.start) params.append('startDate', dateRange.start);
-      if (dateRange.end) params.append('endDate', dateRange.end);
-      const response = await fetch(`/api/analytics/costs?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch costs');
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -156,14 +124,13 @@ export default function AppAnalytics() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              ${costs?.totalCost.toFixed(4) || '0.00'}
+              ${costAnalytics?.totalCost ? formatCost(costAnalytics.totalCost) : '$0.00'}
             </div>
-          <h1 className="text-3xl font-bold">Analytics & Cost Tracking</h1>
-          <p className="text-muted-foreground">
-            Monitor AI usage, costs, and performance metrics
-          </p>
-        </div>
-        <div className="flex gap-2">
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="flex gap-2 mb-4">
           <Select value={dateRange} onValueChange={setDateRange}>
             <SelectTrigger className="w-[180px]">
               <SelectValue />

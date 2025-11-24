@@ -1,4 +1,19 @@
 import { z } from 'zod';
+import type { Workflow } from '@shared/schema';
+import { ValidationError, WorkflowValidationError } from '@shared/errors';
+
+interface WorkflowNode {
+  id: string;
+  type: string;
+  data: any;
+  position: { x: number; y: number };
+}
+
+interface WorkflowEdge {
+  id: string;
+  source: string;
+  target: string;
+}
 
 // Schema for validating workflow export/import format
 const nodeSchema = z.object({
@@ -196,32 +211,12 @@ export class WorkflowValidator {
     }));
 
     return { nodes: newNodes, edges: newEdges };
-import type { Workflow } from '@shared/schema';
-import { ValidationError, WorkflowValidationError } from '@shared/errors';
+  }
 
-interface WorkflowNode {
-  id: string;
-  type: string;
-  data: any;
-  position: { x: number; y: number };
-}
-
-interface WorkflowEdge {
-  id: string;
-  source: string;
-  target: string;
-}
-
-export interface ValidationResult {
-  valid: boolean;
-  errors: ValidationError[];
-}
-
-export class WorkflowValidator {
   /**
    * Validates a workflow for common issues
    */
-  validate(workflow: Workflow): ValidationResult {
+  validate(workflow: any): { valid: boolean; errors: ValidationError[] } {
     const errors: ValidationError[] = [];
     const nodes = workflow.nodes as WorkflowNode[];
     const edges = workflow.edges as WorkflowEdge[];
