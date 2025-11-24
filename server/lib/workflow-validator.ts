@@ -216,7 +216,7 @@ export class WorkflowValidator {
   /**
    * Validates a workflow for common issues
    */
-  validate(workflow: any): { valid: boolean; errors: ValidationError[] } {
+  validate(workflow: Workflow): { valid: boolean; errors: ValidationError[] } {
     const errors: ValidationError[] = [];
     const nodes = workflow.nodes as WorkflowNode[];
     const edges = workflow.edges as WorkflowEdge[];
