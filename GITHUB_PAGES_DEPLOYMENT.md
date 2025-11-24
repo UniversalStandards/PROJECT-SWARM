@@ -20,14 +20,18 @@ A GitHub Actions workflow (`.github/workflows/deploy-github-pages.yml`) is confi
 3. Under **Source**, select **GitHub Actions**
 4. The site will be available at `https://UniversalStandards.github.io/PROJECT-SWARM/`
 
-### 2. Configure Base URL (If using repository name in path)
+### 2. Configure Base URL (If needed)
 
-If your site is served from a subdirectory (e.g., `/PROJECT-SWARM/`), you may need to update `vite.config.ts`:
+If your site is served from a subdirectory (e.g., `/PROJECT-SWARM/`), you may need to configure the base path. 
+
+**Note**: The current `vite.config.ts` uses root path `/` by default. If deploying to a subdirectory, add the base configuration:
 
 ```typescript
+// In vite.config.ts, add to the config object:
 export default defineConfig({
   base: process.env.GITHUB_PAGES ? '/PROJECT-SWARM/' : '/',
-  // ... rest of config
+  plugins: [...],
+  // ... rest of existing config
 });
 ```
 

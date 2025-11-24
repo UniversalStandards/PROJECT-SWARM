@@ -264,7 +264,8 @@ upstream project_swarm_backend {
 
 server {
     listen 80;
-    server_name your-domain.com;  # Replace with your domain
+    # Use your domain name or server IP address
+    server_name your-domain.com;  # Replace with: example.com or 52.123.45.67 (your server IP)
     
     # Security headers
     add_header X-Frame-Options "SAMEORIGIN" always;
@@ -389,7 +390,10 @@ DATABASE_URL=postgresql://username:password@your-instance.rds.amazonaws.com:5432
 
 #### On Amazon Linux:
 ```bash
-sudo yum install -y postgresql15-server postgresql15
+# Install PostgreSQL (use version 15, 16, or 17 as available)
+sudo yum install -y postgresql-server postgresql
+# Or for specific version: sudo yum install -y postgresql15-server postgresql15
+
 sudo postgresql-setup --initdb
 sudo systemctl start postgresql
 sudo systemctl enable postgresql
