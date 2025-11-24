@@ -1,6 +1,19 @@
-# Cloudflare Pages Deployment Configuration
+# Cloudflare Deployment Guide
 
-## Build Settings
+## Overview
+
+PROJECT-SWARM can be deployed on Cloudflare using two services:
+
+1. **Cloudflare Pages** - Frontend static hosting (covered in this guide)
+2. **Cloudflare Workers** - Backend API at the edge (see [CLOUDFLARE_WORKERS_GUIDE.md](./CLOUDFLARE_WORKERS_GUIDE.md))
+
+For full-stack deployment with global edge computing, use **Pages + Workers** together.
+
+---
+
+## Cloudflare Pages - Frontend Deployment
+
+### Build Settings
 
 Configure these settings in your Cloudflare Pages dashboard:
 

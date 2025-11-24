@@ -32,25 +32,36 @@ PROJECT-SWARM consists of two main components:
 
 ## Quick Start by Platform
 
-### 🌐 Cloudflare (Recommended for Production)
+### 🌐 Cloudflare Pages + Workers (Recommended for Production)
 
-**Best for**: Global distribution, edge computing, automatic scaling
+**Best for**: Global distribution, edge computing, automatic scaling, serverless backend
 
 ```bash
-# Already configured! See CLOUDFLARE_DEPLOYMENT.md
-# Deploy: Push to repository, connect to Cloudflare Pages
+# Frontend: Cloudflare Pages (auto-deploys)
+# Backend: Cloudflare Workers (edge API)
+# Database: Neon PostgreSQL (serverless)
 ```
 
-**Deployment Steps**:
-1. Go to [Cloudflare Pages](https://pages.cloudflare.com)
-2. Connect GitHub repository
-3. Configure build settings:
-   - Build command: `npm run build`
-   - Build output: `dist/public`
-   - Root directory: `/`
-   - Environment variable: `NODE_VERSION=22`
+**Full-Stack Architecture:**
+- **Pages**: Hosts frontend React app (300+ global locations)
+- **Workers**: Runs backend API at the edge (<50ms latency worldwide)
+- **Combination**: Complete serverless solution with zero server management
 
-📖 **Full Guide**: [CLOUDFLARE_DEPLOYMENT.md](./CLOUDFLARE_DEPLOYMENT.md)
+**Deployment Steps**:
+1. **Frontend (Pages)**:
+   - Go to [Cloudflare Pages](https://pages.cloudflare.com)
+   - Connect GitHub repository
+   - Configure: `npm run build` → `dist/public`
+   - Auto-deploys on git push
+
+2. **Backend (Workers)**:
+   - Install Wrangler: `npm install -g wrangler`
+   - Deploy: `wrangler deploy`
+   - Your API runs globally at the edge
+
+📖 **Full Guides**: 
+- [CLOUDFLARE_DEPLOYMENT.md](./CLOUDFLARE_DEPLOYMENT.md) - Pages setup
+- [CLOUDFLARE_WORKERS_GUIDE.md](./CLOUDFLARE_WORKERS_GUIDE.md) - Workers backend
 
 ---
 
@@ -524,3 +535,46 @@ Yes, you can deploy PROJECT-SWARM simultaneously on all three platforms! Here's 
 4. **Cloud Backup**: Amazon Linux - Full stack with PM2 + Nginx
 
 Each platform has its strengths, and you can use them together for redundancy, geographic distribution, and different use cases.
+
+---
+
+## Platform-Specific Feature Enhancements
+
+Different platforms enable different features:
+
+### Cloudflare Workers Exclusive Features
+- **Edge Computing**: API runs in 300+ locations worldwide (<50ms latency)
+- **Durable Objects**: Stateful edge computing for real-time collaboration
+- **KV Storage**: Fast key-value cache for API responses
+- **R2 Storage**: S3-compatible object storage for files
+- **Workers Analytics**: Built-in performance monitoring
+- **Background Jobs**: Queues for async task processing
+
+See [CLOUDFLARE_WORKERS_GUIDE.md](./CLOUDFLARE_WORKERS_GUIDE.md) for complete Workers deployment.
+
+### Self-Hosted Exclusive Features
+- **Custom Integrations**: Full control to add any library/service
+- **Internal Network Access**: Connect to internal databases/APIs
+- **Compliance**: Meet specific regulatory requirements (HIPAA, SOC2)
+- **Resource Control**: Dedicated CPU/memory allocation
+- **Cost Predictability**: Fixed monthly costs regardless of traffic
+
+### Recommended Feature Additions
+
+For a comprehensive overview of features to implement, see [FEATURES_ROADMAP.md](./FEATURES_ROADMAP.md) which includes:
+
+**High Priority (Implement First):**
+- Multi-user collaboration with real-time editing
+- Advanced error recovery and retry logic  
+- Rate limiting and cost controls
+- Workflow testing and debugging tools
+- Conditional logic and branching nodes
+- Integration marketplace (Slack, GitHub, etc.)
+
+**Platform-Specific Recommendations:**
+- **Cloudflare**: Leverage Durable Objects for WebSocket/real-time features
+- **Self-Hosted**: Add admin dashboard, user management, resource quotas
+- **Hybrid**: Use Cloudflare for production, self-hosted for development/testing
+
+📖 **Complete Feature List**: [FEATURES_ROADMAP.md](./FEATURES_ROADMAP.md)
+
