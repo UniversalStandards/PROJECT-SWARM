@@ -385,7 +385,7 @@ Have an idea not listed here?
 **Submit via:**
 - GitHub Issues (tag: `feature-request`)
 - GitHub Discussions (category: `Ideas`)
-- Email: features@project-swarm.dev
+- Repository: https://github.com/UniversalStandards/PROJECT-SWARM
 
 **Include:**
 - Clear description of the feature

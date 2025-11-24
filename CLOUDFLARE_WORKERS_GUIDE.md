@@ -56,7 +56,7 @@ wrangler login
 The project includes a `wrangler.toml` file. Update it with your settings:
 
 ```toml
-name = "project-swarm-api"
+name = "project-swarm-api"  # Change to your preferred worker name
 main = "dist/index.js"
 compatibility_date = "2024-11-24"
 

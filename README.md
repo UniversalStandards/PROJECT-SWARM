@@ -55,7 +55,7 @@ PROJECT-SWARM provides a complete AI workflow orchestration platform with 40+ fe
 - 🗺️ **Minimap Navigation** - Bird's-eye view of large workflows
 - 🔍 **Search & Filter** - Find workflows quickly
 
-See [WORKFLOW_BUILDER_FEATURES.md](./WORKFLOW_BUILDER_FEATURES.md) for complete feature list.
+See [WORKFLOW_BUILDER_FEATURES.md](./WORKFLOW_BUILDER_FEATURES.md) for workflow builder details and [FEATURES_ROADMAP.md](./FEATURES_ROADMAP.md) for complete feature inventory.
 
 ---
 
@@ -173,7 +173,7 @@ See [CLOUDFLARE_WORKERS_GUIDE.md](./CLOUDFLARE_WORKERS_GUIDE.md) for complete gu
 
 ## 🛣️ Roadmap
 
-### Current (40+ Features Implemented)
+### Current (~40 Features Implemented)
 - ✅ Visual workflow builder
 - ✅ Multi-AI provider support
 - ✅ Workflow versioning & history
