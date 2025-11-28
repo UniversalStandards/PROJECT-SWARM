@@ -116,29 +116,27 @@ export class WorkflowOrchestrator {
         }
 
         try {
-          const result = await aiExecutor.executeAgent(agent, {
-        // Debug: Log agent details
-        await this.logExecution(
-          execution.id,
-          'info',
-          `Agent details: provider=${agent.provider}, model=${agent.model}`,
-          agent.id
-        );
+          // Debug: Log agent details
+          await this.logExecution(
+            execution.id,
+            'info',
+            `Agent details: provider=${agent.provider}, model=${agent.model}`,
+            agent.id
+          );
 
-        // Execute agent with retry logic for transient failures
-        const result = await this.executeAgentWithRetry(
-          execution.id,
-          agent,
-          {
-            agentId: agent.id,
-            messages: contextMessages,
-            temperature: agent.temperature || 70,
-            maxTokens: agent.maxTokens || 1000,
-            knowledgeContext: relevantKnowledge,
-          });
-          },
-          3 // max retries
-        );
+          // Execute agent with retry logic for transient failures
+          const result = await this.executeAgentWithRetry(
+            execution.id,
+            agent,
+            {
+              agentId: agent.id,
+              messages: contextMessages,
+              temperature: agent.temperature || 70,
+              maxTokens: agent.maxTokens || 1000,
+              knowledgeContext: relevantKnowledge,
+            },
+            3 // max retries
+          );
 
         // Track cost for this execution
         const providerUsed = result.provider || agent.provider;

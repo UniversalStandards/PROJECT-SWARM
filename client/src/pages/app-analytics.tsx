@@ -1,35 +1,3 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useQuery } from '@tanstack/react-query';
-
-interface CostData {
-  totalCost: number;
-  totalTokens: number;
-  byProvider: Record<string, {
-    cost: number;
-    tokens: number;
-    count: number;
-  }>;
-  details: Array<{
-    provider: string;
-    model: string;
-    promptTokens: number;
-    completionTokens: number;
-    costUsd: number;
-  }>;
-}
-
-export default function AnalyticsDashboard() {
-  const [dateRange, setDateRange] = useState({ start: '', end: '' });
-
-  const { data: costs, isLoading } = useQuery<CostData>({
-    queryKey: ['/api/analytics/costs', dateRange],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (dateRange.start) params.append('startDate', dateRange.start);
-      if (dateRange.end) params.append('endDate', dateRange.end);
-      const response = await fetch(`/api/analytics/costs?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch costs');
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -77,7 +45,7 @@ export default function AppAnalytics() {
     return { start, end };
   };
 
-  const { data: costAnalytics } = useQuery<CostAnalytics>({
+  const { data: costAnalytics, isLoading: costsLoading } = useQuery<CostAnalytics>({
     queryKey: [`/api/analytics/costs`, dateRange],
     queryFn: async () => {
       const { start, end } = getDateRange();
@@ -89,16 +57,7 @@ export default function AppAnalytics() {
     },
   });
 
-  if (isLoading) {
-    return (
-      <div className="container mx-auto p-6">
-        <div className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">Loading analytics...</p>
-        </div>
-      </div>
-    );
-  }
-  const { data: usageStats } = useQuery<UsageStats>({
+  const { data: usageStats, isLoading: usageLoading } = useQuery<UsageStats>({
     queryKey: [`/api/analytics/usage`, dateRange],
     queryFn: async () => {
       const { start, end } = getDateRange();
@@ -139,25 +98,20 @@ export default function AppAnalytics() {
     return tokens.toString();
   };
 
+  if (costsLoading || usageLoading) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">Loading analytics...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Cost Analytics</h1>
-          <p className="text-muted-foreground">Track your AI provider costs and token usage</p>
-        </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle>Total Cost</CardTitle>
-            <CardDescription>Lifetime spending</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              ${costs?.totalCost.toFixed(4) || '0.00'}
-            </div>
           <h1 className="text-3xl font-bold">Analytics & Cost Tracking</h1>
           <p className="text-muted-foreground">
             Monitor AI usage, costs, and performance metrics
@@ -199,14 +153,6 @@ export default function AppAnalytics() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Total Tokens</CardTitle>
-            <CardDescription>All providers combined</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {costs?.totalTokens.toLocaleString() || '0'}
-            </div>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total Tokens</CardTitle>
             <Zap className="h-4 w-4 text-muted-foreground" />
@@ -216,64 +162,33 @@ export default function AppAnalytics() {
               {usageStats ? formatTokens(usageStats.totalTokens) : "0"}
             </div>
             <p className="text-xs text-muted-foreground">
-              Input: {usageStats ? formatTokens(usageStats.inputTokens) : "0"} | Output:{" "}
-              {usageStats ? formatTokens(usageStats.outputTokens) : "0"}
+              {usageStats ? `${formatTokens(usageStats.inputTokens)} input / ${formatTokens(usageStats.outputTokens)} output` : "No data"}
             </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Executions</CardTitle>
-            <CardDescription>Total API calls</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {costs?.details.length || 0}
-            </div>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Avg Cost/1M Tokens</CardTitle>
+            <CardTitle className="text-sm font-medium">Providers</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {costAnalytics && usageStats && usageStats.totalTokens > 0
-                ? formatCost(Math.round((costAnalytics.totalCost / usageStats.totalTokens) * 1000000))
-                : "$0.00"}
+              {costAnalytics?.breakdown?.byProvider?.length || 0}
             </div>
-            <p className="text-xs text-muted-foreground">Per million tokens</p>
+            <p className="text-xs text-muted-foreground">Active providers</p>
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Cost by Provider</CardTitle>
-          <CardDescription>Breakdown of spending across AI providers</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {costs?.byProvider && Object.keys(costs.byProvider).length > 0 ? (
-            <div className="space-y-4">
-              {Object.entries(costs.byProvider).map(([provider, data]) => (
-                <div key={provider} className="flex items-center justify-between border-b pb-2">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium capitalize">{provider}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {data.tokens.toLocaleString()} tokens · {data.count} calls
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-lg font-bold">${(data.cost / 1000000).toFixed(4)}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {((data.cost / (costs.totalCost * 1000000)) * 100).toFixed(1)}%
       {/* Cost Breakdown by Provider */}
       <Card>
         <CardHeader>
           <CardTitle>Cost by Provider</CardTitle>
-          <CardDescription>AI provider cost breakdown</CardDescription>
+          <CardDescription>Breakdown of costs across AI providers</CardDescription>
         </CardHeader>
         <CardContent>
-          {costAnalytics?.breakdown.byProvider && costAnalytics.breakdown.byProvider.length > 0 ? (
+          {costAnalytics?.breakdown?.byProvider && costAnalytics.breakdown.byProvider.length > 0 ? (
             <div className="space-y-4">
               {costAnalytics.breakdown.byProvider.map((item) => (
                 <div key={item.provider} className="flex items-center justify-between">
@@ -298,60 +213,6 @@ export default function AppAnalytics() {
         </CardContent>
       </Card>
 
-      {/* Cost Breakdown by Model */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Cost by Model</CardTitle>
-          <CardDescription>AI model cost breakdown</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {costAnalytics?.breakdown.byModel && costAnalytics.breakdown.byModel.length > 0 ? (
-            <div className="space-y-4">
-              {costAnalytics.breakdown.byModel.map((item) => (
-                <div key={item.model} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <code className="text-xs bg-muted px-2 py-1 rounded">{item.model}</code>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium">{formatCost(item.cost)}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {costAnalytics.totalCost > 0
-                        ? Math.round((item.cost / costAnalytics.totalCost) * 100)
-                        : 0}
-                      % of total
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-center text-muted-foreground py-8">
-              No cost data available yet. Execute some workflows to see analytics.
-            </p>
-            <p className="text-center text-muted-foreground py-8">No cost data available</p>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Executions</CardTitle>
-          <CardDescription>Latest AI model usage</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {costs?.details && costs.details.length > 0 ? (
-            <div className="space-y-2">
-              {costs.details.slice(0, 10).map((detail, idx) => (
-                <div key={idx} className="flex items-center justify-between text-sm border-b pb-2">
-                  <div>
-                    <span className="font-medium capitalize">{detail.provider}</span>
-                    <span className="text-muted-foreground"> · {detail.model}</span>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-medium">${(detail.costUsd / 1000000).toFixed(4)}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {detail.promptTokens + detail.completionTokens} tokens
-                    </div>
       {/* Token Usage by Provider */}
       <Card>
         <CardHeader>
@@ -379,9 +240,6 @@ export default function AppAnalytics() {
               ))}
             </div>
           ) : (
-            <p className="text-center text-muted-foreground py-8">
-              No execution details available
-            </p>
             <p className="text-center text-muted-foreground py-8">No usage data available</p>
           )}
         </CardContent>

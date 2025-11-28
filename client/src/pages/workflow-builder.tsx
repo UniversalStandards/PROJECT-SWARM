@@ -99,7 +99,6 @@ function WorkflowBuilderContent() {
   const [showSearch, setShowSearch] = useState(false);
   const [gridSize] = useState(20);
   const [highlightedNodes, setHighlightedNodes] = useState<string[]>([]);
-  const { toast } = useToast();
   const { copy, paste, canPaste } = useNodeClipboard();
   
   // Get zoom controls (only works inside ReactFlowProvider)
@@ -167,18 +166,15 @@ function WorkflowBuilderContent() {
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
       const snappedChanges = applySnapping(changes);
-      setNodes((nds) => applyNodeChanges(snappedChanges, nds));
-    },
-    [applySnapping]
       setNodes((nds) => {
-        const updated = applyNodeChanges(changes, nds);
+        const updated = applyNodeChanges(snappedChanges, nds);
         // Track selected nodes
         const selected = updated.filter(n => n.selected);
         setSelectedNodes(selected);
         return updated;
       });
     },
-    []
+    [applySnapping]
   );
 
   const onEdgesChange = useCallback(

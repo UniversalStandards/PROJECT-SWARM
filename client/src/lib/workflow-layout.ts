@@ -233,23 +233,16 @@ function calculateGridLayout(
   return nodes.map((node, index) => {
     const col = index % columns;
     const row = Math.floor(index / columns);
-import ELK from 'elkjs/lib/elk.bundled.js';
-import { Node, Edge } from '@xyflow/react';
-
-const elk = new ELK();
-
-export type LayoutDirection = 'TB' | 'LR' | 'BT' | 'RL';
-export type LayoutType = 'hierarchical' | 'force' | 'circular' | 'grid';
-
-export interface LayoutOptions {
-  type: LayoutType;
-  direction?: LayoutDirection;
-  spacing?: number;
-  padding?: number;
+    
+    return {
+      ...node,
+      position: {
+        x: col * nodeSpacing + 100,
+        y: row * nodeSpacing + 100,
+      },
+    };
+  });
 }
-
-const DEFAULT_NODE_WIDTH = 250;
-const DEFAULT_NODE_HEIGHT = 150;
 
 /**
  * Apply hierarchical layout using ELK
@@ -405,39 +398,8 @@ function applyGridLayout(nodes: Node[], spacing: number = 250): Node[] {
     return {
       ...node,
       position: {
-        x: col * nodeSpacing + 100,
-        y: row * nodeSpacing + 100,
-      },
-    };
-  });
-}
-
-/**
- * Apply layout algorithm to nodes
- */
-export function applyLayout(
-  nodes: Node[],
-  edges: Edge[],
-  options: LayoutOptions = {}
-): Node[] {
-  const {
-    algorithm = 'hierarchical',
-    direction = 'TB',
-    nodeSpacing = 150,
-    rankSpacing = 200,
-  } = options;
-  
-  if (nodes.length === 0) return nodes;
-  
-  switch (algorithm) {
-    case 'hierarchical':
-      return calculateHierarchicalLayout(nodes, edges, direction, nodeSpacing, rankSpacing);
-    case 'force':
-      return calculateForceLayout(nodes, edges, nodeSpacing);
-    case 'grid':
-      return calculateGridLayout(nodes, nodeSpacing);
-        x: col * spacing + 50,
-        y: row * spacing + 50,
+        x: col * spacing + 100,
+        y: row * spacing + 100,
       },
     };
   });

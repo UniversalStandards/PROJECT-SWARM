@@ -1199,10 +1199,6 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
         return res.status(403).json({ error: "Forbidden" });
       }
 
-      const versions = await storage.getWorkflowVersions(req.params.id);
-        return res.status(404).json({ error: "Workflow not found" });
-      }
-
       const versions = await versionManager.getVersions(req.params.id);
       res.json(versions);
     } catch (error: any) {
@@ -1211,6 +1207,25 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
   });
 
   app.get("/api/workflows/:id/versions/:versionId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      const version = await versionManager.getVersion(req.params.id, req.params.versionId);
+      if (!version) {
+        return res.status(404).json({ error: "Version not found" });
+      }
+
+      res.json(version);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.patch('/api/settings', isAuthenticated, async (req: any, res) => {
     try {
       const userId = getUserId(req);
@@ -1234,6 +1249,10 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
       if (error.name === 'ZodError') {
         return res.status(400).json({ error: 'Invalid input', details: error.errors });
       }
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post("/api/workflows/:id/versions", isAuthenticated, async (req: any, res) => {
     try {
       const userId = getUserId(req);
@@ -1241,14 +1260,6 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
       
       if (!workflow || workflow.userId !== userId) {
         return res.status(403).json({ error: "Forbidden" });
-      }
-
-      const version = await storage.getWorkflowVersionById(req.params.versionId);
-      if (!version || version.workflowId !== req.params.id) {
-        return res.status(404).json({ error: "Version not found" });
-      }
-
-        return res.status(404).json({ error: "Workflow not found" });
       }
 
       const { commitMessage } = req.body;
@@ -1260,39 +1271,12 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
   });
 
   app.post("/api/workflows/:id/versions/:versionId/restore", isAuthenticated, async (req: any, res) => {
-  app.put("/api/workflows/:id/restore/:versionId", isAuthenticated, async (req: any, res) => {
     try {
       const userId = getUserId(req);
       const workflow = await storage.getWorkflowById(req.params.id);
       
       if (!workflow || workflow.userId !== userId) {
         return res.status(403).json({ error: "Forbidden" });
-      }
-
-      const version = await storage.getWorkflowVersionById(req.params.versionId);
-      if (!version || version.workflowId !== req.params.id) {
-        return res.status(404).json({ error: "Version not found" });
-      }
-
-      // Restore workflow from version data
-      const versionData = version.data as any;
-      await storage.updateWorkflow(req.params.id, {
-        nodes: versionData.nodes,
-        edges: versionData.edges,
-        name: versionData.name,
-        description: versionData.description,
-        category: versionData.category,
-      });
-
-      // Sync agents
-      await syncAgentsFromNodes(req.params.id, versionData.nodes);
-
-      // Set as active version
-      await storage.setActiveVersion(req.params.id, req.params.versionId);
-
-      const updated = await storage.getWorkflowById(req.params.id);
-      res.json(updated);
-        return res.status(404).json({ error: "Workflow not found" });
       }
 
       await versionManager.restoreVersion(req.params.id, req.params.versionId, userId);
@@ -1336,6 +1320,10 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
       if (error.name === 'ZodError') {
         return res.status(400).json({ error: 'Invalid input', details: error.errors });
       }
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get("/api/workflows/:id/versions/:v1/compare/:v2", isAuthenticated, async (req: any, res) => {
     try {
       const userId = getUserId(req);
@@ -1343,48 +1331,6 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
       
       if (!workflow || workflow.userId !== userId) {
         return res.status(403).json({ error: "Forbidden" });
-      }
-
-      const agents = await storage.getAgentsByWorkflowId(req.params.id);
-      const schema = await storage.getWorkflowSchema(req.params.id);
-      const user = await storage.getUser(userId);
-
-      const exportData = {
-        version: '1.0',
-        metadata: {
-          name: workflow.name,
-          description: workflow.description || '',
-          category: workflow.category || '',
-          author: user?.email || 'Unknown',
-          createdAt: workflow.createdAt.toISOString(),
-          updatedAt: workflow.updatedAt.toISOString(),
-          exportedAt: new Date().toISOString(),
-        },
-        workflow: {
-          nodes: workflow.nodes,
-          edges: workflow.edges,
-        },
-        agents: agents.map(agent => ({
-          name: agent.name,
-          role: agent.role,
-          description: agent.description || '',
-          provider: agent.provider,
-          model: agent.model,
-          systemPrompt: agent.systemPrompt,
-          temperature: agent.temperature,
-          maxTokens: agent.maxTokens,
-          capabilities: agent.capabilities,
-          nodeId: agent.nodeId,
-          position: agent.position,
-        })),
-        inputSchema: schema?.inputSchema || {},
-        outputSchema: schema?.outputSchema || {},
-      };
-
-      res.setHeader('Content-Type', 'application/json');
-      res.setHeader('Content-Disposition', `attachment; filename="${workflow.name.replace(/[^a-z0-9]/gi, '_')}_export.json"`);
-      res.json(exportData);
-        return res.status(404).json({ error: "Workflow not found" });
       }
 
       const comparison = await versionManager.compareVersions(req.params.v1, req.params.v2);
@@ -1670,7 +1616,6 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
   });
 
   app.post("/api/workflows/:id/webhooks/:webhookId/regenerate-secret", isAuthenticated, async (req: any, res) => {
-  app.post("/api/workflows/:id/webhooks", isAuthenticated, async (req: any, res) => {
     try {
       const userId = getUserId(req);
       const workflow = await storage.getWorkflowById(req.params.id);
@@ -1690,7 +1635,18 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
       });
 
       res.json(updated);
-        return res.status(404).json({ error: "Workflow not found" });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/workflows/:id/webhooks", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
       }
 
       const baseUrl = `${req.protocol}://${req.get("host")}`;
