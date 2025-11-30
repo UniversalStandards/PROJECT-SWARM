@@ -230,6 +230,19 @@ export const executionCosts = pgTable("execution_costs", {
   index("idx_execution_costs").on(table.executionId, table.timestamp.desc()),
 ]);
 
+export const providerPricing = pgTable("provider_pricing", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  provider: text("provider").notNull(), // openai, anthropic, gemini
+  model: text("model").notNull(),
+  inputTokenPrice: integer("input_token_price").notNull(), // Price per 1M tokens in cents
+  outputTokenPrice: integer("output_token_price").notNull(), // Price per 1M tokens in cents
+  currency: text("currency").default("USD").notNull(),
+  effectiveDate: timestamp("effective_date").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_provider_pricing").on(table.provider, table.model),
+]);
+
 // Phase 3A: Workflow Tags
 export const tags = pgTable("tags", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -262,6 +275,7 @@ export const insertWorkflowWebhookSchema = createInsertSchema(workflowWebhooks).
 export const insertWebhookLogSchema = createInsertSchema(webhookLogs).omit({ id: true, timestamp: true });
 export const insertWorkflowSchemaSchema = createInsertSchema(workflowSchemas).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertExecutionCostSchema = createInsertSchema(executionCosts).omit({ id: true, timestamp: true });
+export const insertProviderPricingSchema = createInsertSchema(providerPricing).omit({ id: true, effectiveDate: true, updatedAt: true });
 export const insertTagSchema = createInsertSchema(tags).omit({ id: true, createdAt: true });
 export const insertWorkflowTagSchema = createInsertSchema(workflowTags).omit({ id: true, createdAt: true });
 

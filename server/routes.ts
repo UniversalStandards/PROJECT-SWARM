@@ -738,6 +738,11 @@ export async function registerRoutes(app: Express) {
         executions: comparisons.filter(c => c !== null),
         comparisonDate: new Date().toISOString(),
       });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Settings - Danger Zone
   app.delete("/api/settings/executions", isAuthenticated, async (req: any, res) => {
     try {
@@ -1187,6 +1192,11 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
         hasGeminiKey: !!user.geminiApiKey,
         githubConnected: !!user.githubAccessToken && !isGitHubTokenExpired(user),
       });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Phase 3A: Workflow Versioning API
   const { versionManager } = await import("./lib/workflow-version");
 
@@ -1288,6 +1298,27 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
 
   // Workflow Export/Import
   app.get("/api/workflows/:id/export", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      const exportData = await workflowExporter.exportWorkflow(req.params.id, {
+        includeExecutionHistory: req.query.includeExecutions === "true",
+        includeKnowledgeBase: req.query.includeKnowledge === "true",
+        includeSchedules: req.query.includeSchedules === "true",
+        includeWebhooks: req.query.includeWebhooks === "true",
+      });
+      
+      res.json(exportData);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // API Keys management
   app.post('/api/settings/api-keys', isAuthenticated, async (req: any, res) => {
     try {
@@ -1416,6 +1447,11 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
       }
 
       res.json(workflow);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.delete('/api/settings/api-keys/:provider', isAuthenticated, async (req: any, res) => {
     try {
       const userId = getUserId(req);
@@ -1435,7 +1471,12 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
       }
       
       await storage.updateUser(userId, updateData);
-      
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Phase 3A: Workflow Scheduling API
   const { scheduler } = await import("./lib/scheduler");
 
@@ -1467,23 +1508,11 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
 
       const { cronExpression, timezone, enabled } = req.body;
 
-      const schedule = await storage.createWorkflowSchedule({
-        workflowId: req.params.id,
-        cronExpression,
-        timezone: timezone || 'UTC',
-        enabled: enabled !== undefined ? enabled : true,
-        lastRun: null,
-        nextRun: null,
-      });
-
-        return res.status(404).json({ error: "Workflow not found" });
-      }
-
       const schedule = await scheduler.createSchedule({
         workflowId: req.params.id,
-        cronExpression: req.body.cronExpression,
-        enabled: req.body.enabled !== undefined ? req.body.enabled : true,
-        timezone: req.body.timezone || "UTC",
+        cronExpression,
+        timezone: timezone || "UTC",
+        enabled: enabled !== undefined ? enabled : true,
       });
       res.json(schedule);
     } catch (error: any) {
@@ -1491,17 +1520,6 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
     }
   });
 
-  app.get("/api/workflows/:id/schedules", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = getUserId(req);
-      const workflow = await storage.getWorkflowById(req.params.id);
-      
-      if (!workflow || workflow.userId !== userId) {
-        return res.status(403).json({ error: "Forbidden" });
-      }
-
-      const schedules = await storage.getWorkflowSchedules(req.params.id);
-      res.json(schedules);
   app.put("/api/schedules/:id", isAuthenticated, async (req: any, res) => {
     try {
       const schedule = await scheduler.updateSchedule(req.params.id, req.body);
@@ -1533,6 +1551,11 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
       });
 
       res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.delete("/api/schedules/:id", isAuthenticated, async (req: any, res) => {
     try {
       await scheduler.deleteSchedule(req.params.id);
@@ -1552,6 +1575,12 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
       }
 
       await storage.deleteWorkflowSchedule(req.params.scheduleId);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post("/api/schedules/:id/pause", isAuthenticated, async (req: any, res) => {
     try {
       await scheduler.pauseSchedule(req.params.id);
@@ -1582,6 +1611,11 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
       });
 
       res.json(webhook);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post("/api/schedules/:id/resume", isAuthenticated, async (req: any, res) => {
     try {
       await scheduler.resumeSchedule(req.params.id);
@@ -1605,11 +1639,6 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
 
       const webhooks = await storage.getWorkflowWebhooks(req.params.id);
       res.json(webhooks);
-        return res.status(404).json({ error: "Workflow not found" });
-      }
-
-      const webhook = await webhookManager.getWebhook(req.params.id);
-      res.json(webhook || null);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -1667,6 +1696,12 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
       }
 
       await storage.deleteWorkflowWebhook(req.params.webhookId);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.put("/api/webhooks/:id", isAuthenticated, async (req: any, res) => {
     try {
       const webhook = await webhookManager.updateWebhook(req.params.id, req.body);
@@ -1701,6 +1736,11 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
 
       const logs = await storage.getWebhookLogs(req.params.webhookId);
       res.json(logs);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Test API key
   app.post('/api/settings/test-api-key', isAuthenticated, async (req: any, res) => {
     try {
@@ -1747,6 +1787,11 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
       }
       
       res.json({ success: true, deleted: workflows.length });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post("/api/webhooks/:id/regenerate", isAuthenticated, async (req: any, res) => {
     try {
       const baseUrl = `${req.protocol}://${req.get("host")}`;
@@ -1775,6 +1820,18 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
         req.body,
         req.headers as Record<string, string>,
         signature
+      );
+
+      if (result.success) {
+        res.json({ success: true, executionId: result.executionId });
+      } else {
+        res.status(400).json({ success: false, error: result.error });
+      }
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Public webhook trigger endpoint (no authentication)
   app.post("/api/webhooks/trigger/:workflowId/:secretKey", async (req, res) => {
     try {
@@ -1828,8 +1885,6 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
       });
 
       res.json(schema);
-        res.status(400).json({ error: result.error });
-      }
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -1862,6 +1917,11 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
 
       const schema = await storage.getWorkflowSchema(req.params.id);
       res.json(schema || { inputSchema: {}, outputSchema: {} });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get("/api/analytics/usage", isAuthenticated, async (req: any, res) => {
     try {
       const userId = getUserId(req);
@@ -1921,6 +1981,11 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
         byProvider,
         details: costs,
       });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get("/api/analytics/trends", isAuthenticated, async (req: any, res) => {
     try {
       const userId = getUserId(req);
@@ -1939,6 +2004,11 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
     try {
       const tags = await storage.getAllTags();
       res.json(tags);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get("/api/analytics/expensive-workflows", isAuthenticated, async (req: any, res) => {
     try {
       const userId = getUserId(req);
@@ -1967,6 +2037,11 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
       });
 
       res.json(tag);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get("/api/analytics/export", isAuthenticated, async (req: any, res) => {
     try {
       const userId = getUserId(req);
@@ -1987,6 +2062,11 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
     try {
       await storage.deleteTag(req.params.id);
       res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Phase 3A: Workflow Export/Import API
   const { workflowExporter } = await import("./lib/workflow-exporter");
   const { workflowImporter } = await import("./lib/workflow-importer");
@@ -2035,6 +2115,11 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
 
       const tags = await storage.getWorkflowTags(req.params.id);
       res.json(tags);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.delete('/api/settings/executions', isAuthenticated, async (req: any, res) => {
     try {
       const userId = getUserId(req);
@@ -2044,6 +2129,11 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
       // This endpoint is for explicitly deleting just executions
       
       res.json({ success: true, deleted: executions.length });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post("/api/workflows/import", isAuthenticated, async (req: any, res) => {
     try {
       const userId = getUserId(req);
@@ -2075,6 +2165,11 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
       await storage.removeWorkflowTag(req.params.id, req.params.tagId);
       const tags = await storage.getWorkflowTags(req.params.id);
       res.json(tags);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get('/api/settings/export', isAuthenticated, async (req: any, res) => {
     try {
       const userId = getUserId(req);
@@ -2093,6 +2188,12 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
       
       res.setHeader('Content-Type', 'application/json');
       res.setHeader('Content-Disposition', `attachment; filename="swarm-data-${userId}-${Date.now()}.json"`);
+      res.json(exportData);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post("/api/workflows/bulk-export", isAuthenticated, async (req: any, res) => {
     try {
       const userId = getUserId(req);
@@ -2120,7 +2221,6 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
   });
 
   app.get("/api/workflows/:id/tags", isAuthenticated, async (req: any, res) => {
-  app.post("/api/workflows/:id/clone", isAuthenticated, async (req: any, res) => {
     try {
       const userId = getUserId(req);
       const workflow = await storage.getWorkflowById(req.params.id);
@@ -2131,7 +2231,18 @@ Be concise, practical, and provide actionable guidance. When relevant, suggest s
 
       const tags = await storage.getWorkflowTags(req.params.id);
       res.json(tags);
-        return res.status(404).json({ error: "Workflow not found" });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/workflows/:id/clone", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const workflow = await storage.getWorkflowById(req.params.id);
+      
+      if (!workflow || workflow.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden" });
       }
 
       const result = await workflowImporter.cloneWorkflow(
