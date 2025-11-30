@@ -6,8 +6,10 @@ SWARM (Smart Workflow Automation & Repository Manager) is an enterprise-grade vi
 ## User Preferences
 - Design: Material Design 3 + Modern SaaS hybrid
 - Theme: Dark mode primary (developer/technical tool aesthetic)
+
 - Approach: Horizontal batching (complete features layer by layer)
 - Quality: Premium frontend with attention to detail
+- Platform: To be hosted and use the github platform as the underlying infrastructure (ie. GitHub Pages, Repositories, Wiki's, Workflows, Actions, Projects, Tagging, Copilot/Codex, Issues, etc.)
 
 ## System Architecture
 
