@@ -1,18 +1,9 @@
 // Unit tests for workflow layout algorithms
 // Note: This project may not have Jest configured. These are example tests.
 
-import { applyLayout, snapToGrid } from '../workflow-layout';
+import { applyLayout, snapToGrid, checkAlignment, alignNodes, distributeNodes, getAlignmentGuides } from '../workflow-layout';
 import { Node, Edge } from '@xyflow/react';
 import { describe, it, expect } from 'vitest';
-import { 
-  snapToGrid, 
-  checkAlignment, 
-  alignNodes, 
-  distributeNodes,
-  getAlignmentGuides 
-} from '../workflow-layout';
-import { Node } from '@xyflow/react';
-
 describe('workflow-layout', () => {
   describe('snapToGrid', () => {
     it('should snap position to grid', () => {
