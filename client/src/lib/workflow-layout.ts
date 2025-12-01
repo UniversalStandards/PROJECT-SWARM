@@ -415,9 +415,9 @@ export async function applyLayout(
 ): Promise<Node[]> {
   if (nodes.length === 0) return nodes;
 
-  const { type, direction = 'TB', spacing = 100 } = options;
+  const { algorithm, direction = 'TB', spacing = 100 } = options;
 
-  switch (type) {
+  switch (algorithm) {
     case 'hierarchical':
       return applyHierarchicalLayout(nodes, edges, direction, spacing);
     case 'force':
