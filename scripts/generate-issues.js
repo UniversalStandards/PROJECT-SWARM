@@ -180,8 +180,8 @@ const moreIssues = [
 
 const allIssues = [...issues, ...moreIssues];
 
-console.log('🚀 SWARM Project - GitHub Issues Generator\\n');
-console.log(`Total issues to create: ${allIssues.length}\\n`);
+console.log('🚀 SWARM Project - GitHub Issues Generator\n');
+console.log(`Total issues to create: ${allIssues.length}\n`);
 
 // Function to create a single issue
 function createIssue(issue) {
@@ -191,13 +191,18 @@ function createIssue(issue) {
   
   try {
     console.log(`Creating issue: ${title}`);
-    const result = execSync(`gh issue create --title "${title}" --body "${body}" --label "${labels}"`, 
+    // Escape shell arguments to prevent command injection
+    const escapedTitle = title.replace(/"/g, '\\"').replace(/`/g, '\\`').replace(/\$/g, '\\$');
+    const escapedBody = body.replace(/"/g, '\\"').replace(/`/g, '\\`').replace(/\$/g, '\\$');
+    const escapedLabels = labels.replace(/"/g, '\\"');
+    
+    const result = execSync(`gh issue create --title "${escapedTitle}" --body "${escapedBody}" --label "${escapedLabels}"`, 
       { encoding: 'utf-8', stdio: 'pipe' });
-    console.log(`✅ Created: ${result.trim()}\\n`);
+    console.log(`✅ Created: ${result.trim()}\n`);
     return true;
   } catch (error) {
     console.error(`❌ Failed to create issue: ${title}`);
-    console.error(`   Error: ${error.message}\\n`);
+    console.error(`   Error: ${error.message}\n`);
     return false;
   }
 }
@@ -205,7 +210,7 @@ function createIssue(issue) {
 // Check if gh CLI is available
 try {
   execSync('gh --version', { stdio: 'pipe' });
-  console.log('✓ GitHub CLI detected\\n');
+  console.log('✓ GitHub CLI detected\n');
 } catch (error) {
   console.error('❌ GitHub CLI (gh) is not installed or not in PATH');
   console.error('   Please install it from: https://cli.github.com/');
@@ -216,18 +221,18 @@ try {
 const isDryRun = process.argv.includes('--dry-run');
 
 if (isDryRun) {
-  console.log('🔍 DRY RUN MODE - No issues will be created\\n');
+  console.log('🔍 DRY RUN MODE - No issues will be created\n');
   allIssues.forEach(issue => {
     console.log(`Would create: #${issue.number} - ${issue.title}`);
     console.log(`  Labels: ${issue.labels.join(', ')}`);
-    console.log(`  Priority: ${issue.priority}\\n`);
+    console.log(`  Priority: ${issue.priority}\n`);
   });
-  console.log(`\\nRun without --dry-run to actually create the issues.`);
+  console.log('\nRun without --dry-run to actually create the issues.');
   process.exit(0);
 }
 
 // Create issues
-console.log('Creating issues...\\n');
+console.log('Creating issues...\n');
 let created = 0;
 let failed = 0;
 
@@ -239,7 +244,7 @@ allIssues.forEach(issue => {
   }
 });
 
-console.log('\\n' + '='.repeat(60));
+console.log('\n' + '='.repeat(60));
 console.log(`✅ Successfully created: ${created} issues`);
 if (failed > 0) {
   console.log(`❌ Failed to create: ${failed} issues`);

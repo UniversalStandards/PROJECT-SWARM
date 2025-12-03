@@ -16,5 +16,7 @@ jobs:
       - name: Add to project
         uses: actions/add-to-project@v0.5.0
         with:
-          project-url: https://github.com/orgs/Universal-Standard/projects/1
+          # Update this URL with your actual project URL after creating the project board
+          # Example: https://github.com/orgs/Universal-Standard/projects/YOUR_PROJECT_NUMBER
+          project-url: ${{ vars.PROJECT_BOARD_URL }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
