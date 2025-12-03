@@ -35,7 +35,7 @@ GitHub integration currently uses workspace-level token shared across all users,
 - [ ] Add migration script for existing users
 
 ## Estimated Effort
-Large (5-8 days)
+Large (5-8 hours)
 
 ## Priority
 🔴 Critical`
@@ -58,7 +58,7 @@ Orchestrator and executor exist but execution flow not verified end-to-end. Need
 - [ ] Test concurrent execution handling
 
 ## Estimated Effort
-Large (5-7 days)
+Large (5-7 hours)
 
 ## Priority
 🔴 Critical`
@@ -80,7 +80,7 @@ Knowledge extraction and retrieval during execution not verified. Database schem
 - [ ] Create knowledge management UI
 
 ## Estimated Effort
-Medium (3-5 days)
+Medium (3-5 hours)
 
 ## Dependencies
 Issue #2
@@ -105,7 +105,7 @@ No validation before execution (orphan nodes, cycles, required fields, etc.)
 - [ ] Create validation error UI feedback
 
 ## Estimated Effort
-Medium (3-4 days)
+Medium (3-4 hours)
 
 ## Priority
 🔴 High`
@@ -127,7 +127,7 @@ Generic error messages, no detailed validation feedback. Need field-level valida
 - [ ] Create error logging and tracking system
 
 ## Estimated Effort
-Medium (3-5 days)
+Medium (3-5 hours)
 
 ## Priority
 🔴 High`
@@ -150,7 +150,7 @@ Live execution tracking UI exists but WebSocket/polling not implemented. Executi
 - [ ] Add execution cancellation capability
 
 ## Estimated Effort
-Large (5-6 days)
+Large (5-6 hours)
 
 ## Dependencies
 Issue #2
