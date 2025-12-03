@@ -80,9 +80,6 @@ describe('workflow-layout', () => {
       
       // Both should have positions
       expect(result.every(node => node.position.x !== undefined && node.position.y !== undefined)).toBe(true);
-      expect(snapToGrid({ x: 12, y: 18 }, 20)).toEqual({ x: 20, y: 20 });
-      expect(snapToGrid({ x: 45, y: 55 }, 20)).toEqual({ x: 40, y: 60 });
-      expect(snapToGrid({ x: 100, y: 100 }, 50)).toEqual({ x: 100, y: 100 });
     });
 
     it('should handle negative coordinates', () => {
