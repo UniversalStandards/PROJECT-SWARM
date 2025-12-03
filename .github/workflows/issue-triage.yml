@@ -1,0 +1,69 @@
+name: Issue Triage and Labeling
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  auto-label:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Auto-label based on title and description
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const title = issue.title.toLowerCase();
+            const body = (issue.body || '').toLowerCase();
+            const labels = [];
+            
+            // Priority detection
+            if (title.includes('critical') || title.includes('broken') || title.includes('security')) {
+              labels.push('critical');
+            } else if (title.includes('fix') || title.includes('bug')) {
+              labels.push('high');
+            } else if (title.includes('enhance') || title.includes('improve')) {
+              labels.push('medium');
+            }
+            
+            // Type detection
+            if (title.includes('bug') || title.includes('fix') || title.includes('broken')) {
+              labels.push('bug');
+            } else if (title.includes('feature') || title.includes('implement') || title.includes('add')) {
+              labels.push('enhancement');
+            }
+            
+            // Category detection
+            if (body.includes('github') || title.includes('github')) {
+              labels.push('github-integration');
+            }
+            if (body.includes('execution') || title.includes('execution')) {
+              labels.push('execution-engine');
+            }
+            if (body.includes('knowledge') || title.includes('knowledge')) {
+              labels.push('knowledge-base');
+            }
+            if (body.includes('workflow') || title.includes('workflow')) {
+              labels.push('workflow-builder');
+            }
+            if (body.includes('template') || title.includes('template')) {
+              labels.push('templates');
+            }
+            if (body.includes('monitor') || title.includes('monitor')) {
+              labels.push('execution-monitoring');
+            }
+            if (body.includes('websocket') || title.includes('real-time')) {
+              labels.push('websockets');
+            }
+            
+            // Apply labels
+            if (labels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: labels
+              });
+            }
