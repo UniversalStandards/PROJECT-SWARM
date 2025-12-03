@@ -192,9 +192,10 @@ function createIssue(issue) {
   try {
     console.log(`Creating issue: ${title}`);
     // Escape shell arguments to prevent command injection
-    const escapedTitle = title.replace(/"/g, '\\"').replace(/`/g, '\\`').replace(/\$/g, '\\$');
-    const escapedBody = body.replace(/"/g, '\\"').replace(/`/g, '\\`').replace(/\$/g, '\\$');
-    const escapedLabels = labels.replace(/"/g, '\\"');
+    // Must escape backslashes first, then other special characters
+    const escapedTitle = title.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/`/g, '\\`').replace(/\$/g, '\\$');
+    const escapedBody = body.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/`/g, '\\`').replace(/\$/g, '\\$');
+    const escapedLabels = labels.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
     
     const result = execSync(`gh issue create --title "${escapedTitle}" --body "${escapedBody}" --label "${escapedLabels}"`, 
       { encoding: 'utf-8', stdio: 'pipe' });

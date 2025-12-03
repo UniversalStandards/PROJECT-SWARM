@@ -23,6 +23,9 @@ jobs:
   core-execution-engine:
     if: github.event.inputs.issue_group == 'group-a-core' || contains(github.event.issue.labels.*.name, 'group-a-core')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -52,6 +55,8 @@ jobs:
   core-validation:
     if: github.event.inputs.issue_group == 'group-a-core' || contains(github.event.issue.labels.*.name, 'group-a-core')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -70,6 +75,8 @@ jobs:
   core-error-handling:
     if: github.event.inputs.issue_group == 'group-a-core' || contains(github.event.issue.labels.*.name, 'group-a-core')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -89,6 +96,9 @@ jobs:
   ux-workflow-builder:
     if: github.event.inputs.issue_group == 'group-e-ux' || contains(github.event.issue.labels.*.name, 'group-e-ux')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -118,6 +128,8 @@ jobs:
   ux-agent-config:
     if: github.event.inputs.issue_group == 'group-e-ux' || contains(github.event.issue.labels.*.name, 'group-e-ux')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -133,6 +145,8 @@ jobs:
   ux-loading-states:
     if: github.event.inputs.issue_group == 'group-e-ux' || contains(github.event.issue.labels.*.name, 'group-e-ux')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -150,6 +164,8 @@ jobs:
     needs: [core-execution-engine, core-validation, core-error-handling]
     if: always() && github.event.inputs.issue_group == 'group-a-core'
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
     steps:
       - name: Report completion
         uses: actions/github-script@v7
