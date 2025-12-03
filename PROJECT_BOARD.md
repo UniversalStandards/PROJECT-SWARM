@@ -35,7 +35,7 @@ Nice-to-have features for enhanced experience.
   - [ ] Implement token revocation and management UI
   - [ ] Update all GitHub API calls to use per-user tokens
   - [ ] Add migration script for existing users
-- **Estimated Effort**: Large (5-8 days)
+- **Estimated Effort**: Large (5-8 hours)
 - **Dependencies**: None
 
 #### Issue #2: Test and Fix Workflow Execution Engine
@@ -51,7 +51,7 @@ Nice-to-have features for enhanced experience.
   - [ ] Implement proper error handling and rollback
   - [ ] Add execution state persistence
   - [ ] Test concurrent execution handling
-- **Estimated Effort**: Large (5-7 days)
+- **Estimated Effort**: Large (5-7 hours)
 - **Dependencies**: None
 
 #### Issue #3: Implement Knowledge Base Persistence
@@ -66,7 +66,7 @@ Nice-to-have features for enhanced experience.
   - [ ] Implement knowledge search and filtering
   - [ ] Add knowledge confidence scoring
   - [ ] Create knowledge management UI
-- **Estimated Effort**: Medium (3-5 days)
+- **Estimated Effort**: Medium (3-5 hours)
 - **Dependencies**: Issue #2
 
 #### Issue #4: Implement Workflow Validation
@@ -80,7 +80,7 @@ Nice-to-have features for enhanced experience.
   - [ ] Validate agent configurations
   - [ ] Add pre-execution validation checks
   - [ ] Create validation error UI feedback
-- **Estimated Effort**: Medium (3-4 days)
+- **Estimated Effort**: Medium (3-4 hours)
 - **Dependencies**: None
 
 #### Issue #5: Improve Error Handling System
@@ -94,7 +94,7 @@ Nice-to-have features for enhanced experience.
   - [ ] Implement exponential backoff for AI provider failures
   - [ ] Add user-friendly error messages
   - [ ] Create error logging and tracking system
-- **Estimated Effort**: Medium (3-5 days)
+- **Estimated Effort**: Medium (3-5 hours)
 - **Dependencies**: None
 
 ### Category 2: Incomplete Features (High Priority)
@@ -112,7 +112,7 @@ Nice-to-have features for enhanced experience.
   - [ ] Add agent status indicators
   - [ ] Create progress visualization
   - [ ] Add execution cancellation capability
-- **Estimated Effort**: Large (5-6 days)
+- **Estimated Effort**: Large (5-6 hours)
 - **Dependencies**: Issue #2
 
 #### Issue #7: Implement Agent Message Visualization
@@ -127,7 +127,7 @@ Nice-to-have features for enhanced experience.
   - [ ] Add message filtering and search
   - [ ] Implement message replay functionality
   - [ ] Add export capability for messages
-- **Estimated Effort**: Medium (4-5 days)
+- **Estimated Effort**: Medium (4-5 hours)
 - **Dependencies**: Issue #6
 
 #### Issue #8: Complete Template System
@@ -143,7 +143,7 @@ Nice-to-have features for enhanced experience.
   - [ ] Add template search and filtering
   - [ ] Create featured templates system
   - [ ] Add usage tracking and analytics
-- **Estimated Effort**: Medium (4-5 days)
+- **Estimated Effort**: Medium (4-5 hours)
 - **Dependencies**: None
 
 #### Issue #9: Implement Deep GitHub Repository Integration
@@ -158,7 +158,7 @@ Nice-to-have features for enhanced experience.
   - [ ] Add commit history visualization
   - [ ] Create automated PR review system
   - [ ] Add repository webhooks integration
-- **Estimated Effort**: Large (6-8 days)
+- **Estimated Effort**: Large (6-8 hours)
 - **Dependencies**: Issue #1
 
 #### Issue #10: Implement Workflow Versioning
@@ -173,7 +173,7 @@ Nice-to-have features for enhanced experience.
   - [ ] Implement version branching
   - [ ] Add version tagging and naming
   - [ ] Create version history visualization
-- **Estimated Effort**: Large (5-7 days)
+- **Estimated Effort**: Large (5-7 hours)
 - **Dependencies**: None
 
 ### Category 3: UX Improvements (Medium Priority)
@@ -190,7 +190,7 @@ Nice-to-have features for enhanced experience.
   - [ ] Implement visual connection validation
   - [ ] Add keyboard shortcuts
   - [ ] Create undo/redo functionality
-- **Estimated Effort**: Medium (4-5 days)
+- **Estimated Effort**: Medium (4-5 hours)
 - **Dependencies**: None
 
 #### Issue #12: Improve Agent Configuration Panel
@@ -204,7 +204,7 @@ Nice-to-have features for enhanced experience.
   - [ ] Add real-time validation
   - [ ] Create configuration presets
   - [ ] Add configuration import/export
-- **Estimated Effort**: Small (2-3 days)
+- **Estimated Effort**: Small (2-3 hours)
 - **Dependencies**: None
 
 #### Issue #13: Test and Complete AI Assistant Chat
@@ -219,7 +219,7 @@ Nice-to-have features for enhanced experience.
   - [ ] Add conversation management (new, delete, rename)
   - [ ] Implement context-aware suggestions
   - [ ] Add file/workflow attachment capability
-- **Estimated Effort**: Small (2-3 days)
+- **Estimated Effort**: Small (2-3 hours)
 - **Dependencies**: None
 
 #### Issue #14: Populate Settings Page
@@ -234,7 +234,7 @@ Nice-to-have features for enhanced experience.
   - [ ] Add workspace settings
   - [ ] Create data export functionality
   - [ ] Add account deletion capability
-- **Estimated Effort**: Medium (3-4 days)
+- **Estimated Effort**: Medium (3-4 hours)
 - **Dependencies**: None
 
 #### Issue #15: Enhance Execution Logs Detail View
@@ -248,7 +248,7 @@ Nice-to-have features for enhanced experience.
   - [ ] Create export functionality
   - [ ] Add log level visualization
   - [ ] Implement log sharing
-- **Estimated Effort**: Small (2-3 days)
+- **Estimated Effort**: Small (2-3 hours)
 - **Dependencies**: Issue #2
 
 #### Issue #16: Implement Onboarding Flow
@@ -262,7 +262,7 @@ Nice-to-have features for enhanced experience.
   - [ ] Implement contextual tooltips
   - [ ] Create video tutorials
   - [ ] Add progress tracking
-- **Estimated Effort**: Medium (3-4 days)
+- **Estimated Effort**: Medium (3-4 hours)
 - **Dependencies**: None
 
 #### Issue #17: Improve Loading States
@@ -275,7 +275,7 @@ Nice-to-have features for enhanced experience.
   - [ ] Implement loading spinners for buttons
   - [ ] Create progress bars for long operations
   - [ ] Add optimistic UI updates
-- **Estimated Effort**: Small (1-2 days)
+- **Estimated Effort**: Small (1-2 hours)
 - **Dependencies**: None
 
 ### Category 4: Advanced Features (Medium/High Priority)
@@ -291,7 +291,7 @@ Nice-to-have features for enhanced experience.
   - [ ] Implement vector embeddings
   - [ ] Add knowledge relationship tracking
   - [ ] Create knowledge export/import
-- **Estimated Effort**: Large (6-8 days)
+- **Estimated Effort**: Large (6-8 hours)
 - **Dependencies**: Issue #3
 
 #### Issue #19: Implement Multi-Provider Fallback
@@ -305,7 +305,7 @@ Nice-to-have features for enhanced experience.
   - [ ] Create fallback configuration UI
   - [ ] Implement cost optimization in fallback
   - [ ] Add fallback analytics
-- **Estimated Effort**: Medium (3-4 days)
+- **Estimated Effort**: Medium (3-4 hours)
 - **Dependencies**: Issue #2
 
 #### Issue #20: Implement Advanced Templates
@@ -319,7 +319,7 @@ Nice-to-have features for enhanced experience.
   - [ ] Add template submission workflow
   - [ ] Create template moderation system
   - [ ] Implement template analytics
-- **Estimated Effort**: Large (5-6 days)
+- **Estimated Effort**: Large (5-6 hours)
 - **Dependencies**: Issue #8
 
 ### Category 5: Future Enhancements (Low/Medium Priority)
@@ -336,7 +336,7 @@ Nice-to-have features for enhanced experience.
   - [ ] Implement GitHub webhook integration
   - [ ] Add Slack webhook integration
   - [ ] Create webhook testing tools
-- **Estimated Effort**: Large (5-7 days)
+- **Estimated Effort**: Large (5-7 hours)
 - **Dependencies**: Issue #2
 
 #### Issue #22: Implement Scheduled Executions
@@ -350,7 +350,7 @@ Nice-to-have features for enhanced experience.
   - [ ] Add schedule visualization
   - [ ] Implement schedule conflict detection
   - [ ] Add execution history for scheduled runs
-- **Estimated Effort**: Medium (4-5 days)
+- **Estimated Effort**: Medium (4-5 hours)
 - **Dependencies**: Issue #2
 
 #### Issue #23: Implement Cost Tracking
@@ -364,7 +364,7 @@ Nice-to-have features for enhanced experience.
   - [ ] Add budget alert system
   - [ ] Implement cost optimization suggestions
   - [ ] Create cost export and reporting
-- **Estimated Effort**: Medium (4-5 days)
+- **Estimated Effort**: Medium (4-5 hours)
 - **Dependencies**: Issue #2
 
 #### Issue #24: Implement Workflow Testing Framework
@@ -378,7 +378,7 @@ Nice-to-have features for enhanced experience.
   - [ ] Add test coverage tracking
   - [ ] Implement CI/CD integration
   - [ ] Create test reporting dashboard
-- **Estimated Effort**: Large (6-8 days)
+- **Estimated Effort**: Large (6-8 hours)
 - **Dependencies**: Issue #2
 
 #### Issue #25: Implement Performance Analytics
@@ -392,7 +392,7 @@ Nice-to-have features for enhanced experience.
   - [ ] Add performance trend visualization
   - [ ] Implement anomaly detection
   - [ ] Create analytics export
-- **Estimated Effort**: Medium (4-5 days)
+- **Estimated Effort**: Medium (4-5 hours)
 - **Dependencies**: Issue #2
 
 #### Issue #26: Implement Agent Marketplace
@@ -406,7 +406,7 @@ Nice-to-have features for enhanced experience.
   - [ ] Add agent search and discovery
   - [ ] Create agent moderation system
   - [ ] Implement agent installation workflow
-- **Estimated Effort**: Large (6-8 days)
+- **Estimated Effort**: Large (6-8 hours)
 - **Dependencies**: Issue #8
 
 #### Issue #27: Implement Advanced Debugging Tools
@@ -420,7 +420,7 @@ Nice-to-have features for enhanced experience.
   - [ ] Add variable inspection
   - [ ] Implement execution replay
   - [ ] Create debugging timeline
-- **Estimated Effort**: Large (6-8 days)
+- **Estimated Effort**: Large (6-8 hours)
 - **Dependencies**: Issue #2, Issue #6
 
 #### Issue #28: Implement Workflow Export/Import
@@ -434,7 +434,7 @@ Nice-to-have features for enhanced experience.
   - [ ] Create import validation
   - [ ] Add bulk import/export
   - [ ] Implement workflow migration tools
-- **Estimated Effort**: Small (2-3 days)
+- **Estimated Effort**: Small (2-3 hours)
 - **Dependencies**: None
 
 #### Issue #29: Implement Slack/Discord Integration
@@ -448,7 +448,7 @@ Nice-to-have features for enhanced experience.
   - [ ] Add notification templates
   - [ ] Implement notification rules
   - [ ] Create notification testing
-- **Estimated Effort**: Medium (3-4 days)
+- **Estimated Effort**: Medium (3-4 hours)
 - **Dependencies**: Issue #2
 
 #### Issue #30: Implement Custom Node Types
@@ -462,7 +462,7 @@ Nice-to-have features for enhanced experience.
   - [ ] Add loop/iteration nodes
   - [ ] Implement trigger nodes
   - [ ] Create custom node builder
-- **Estimated Effort**: Large (7-10 days)
+- **Estimated Effort**: Large (7-10 hours)
 - **Dependencies**: Issue #2
 
 #### Issue #31: Implement Real-time Collaboration
@@ -476,7 +476,7 @@ Nice-to-have features for enhanced experience.
   - [ ] Create conflict resolution
   - [ ] Implement live cursors
   - [ ] Add collaborative editing UI
-- **Estimated Effort**: Very Large (10-14 days)
+- **Estimated Effort**: Very Large (10-14 hours)
 - **Dependencies**: Issue #6
 
 #### Issue #32: Implement Mobile App
@@ -490,7 +490,7 @@ Nice-to-have features for enhanced experience.
   - [ ] Add execution monitoring
   - [ ] Create push notifications
   - [ ] Implement offline support
-- **Estimated Effort**: Very Large (15-20 days)
+- **Estimated Effort**: Very Large (15-20 hours)
 - **Dependencies**: Multiple
 
 ---
@@ -593,18 +593,18 @@ Nice-to-have features for enhanced experience.
 
 ### Recommended Execution Order
 
-**Sprint 1 (Critical - Week 1-2):**
+**Sprint 1 (Critical - Hour 1-2):**
 1. Group A (parallel)
 2. Group B (sequential)
 
-**Sprint 2 (High Priority - Week 3-4):**
+**Sprint 2 (High Priority - Hour 3-4):**
 1. Group C (sequential)
 2. Group D (parallel)
 
-**Sprint 3 (UX - Week 5-6):**
+**Sprint 3 (UX - Hour 5-6):**
 1. Group E (parallel)
 
-**Sprint 4 (Advanced - Week 7-8):**
+**Sprint 4 (Advanced - Hour 7-8):**
 1. Group F (mixed)
 
 **Backlog (Future):**
@@ -644,4 +644,4 @@ Nice-to-have features for enhanced experience.
 
 - **Last Updated**: 2025-12-03
 - **Version**: 1.0
-- **Next Review**: Weekly during active development
+- **Next Review**: Hourly during active development
