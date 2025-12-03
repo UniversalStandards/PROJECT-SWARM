@@ -14,7 +14,7 @@
  *   --dry-run    Show what would be created without actually creating issues
  */
 
-const { execSync } = require('child_process');
+import { execSync } from 'child_process';
 
 // Issue definitions based on PROJECT_BOARD.md
 const issues = [
