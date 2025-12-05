@@ -1,14 +1,22 @@
-# Cloudflare Workers/Pages configuration
+# Cloudflare Pages configuration
+# This project uses Cloudflare Pages for static frontend deployment
+# The backend (Express.js) requires a Node.js runtime and should be
+# deployed separately on a compatible platform (e.g., Railway, Render, etc.)
+#
+# For Pages deployment, configure in Cloudflare Dashboard:
+# - Build command: npm run build
+# - Build output directory: dist/public
+# - Node.js version: 22 (set NODE_VERSION=22 in environment variables)
+#
+# See CLOUDFLARE_DEPLOYMENT.md for detailed instructions.
+
 name = "project-swarm"
-main = "dist/index.js"
 compatibility_date = "2024-11-24"
 
-[build]
-command = "npm run build"
+# Note: Cloudflare Pages is configured via the dashboard or wrangler pages commands.
+# This file is provided for reference and local development with wrangler.
+# The Express.js backend is NOT compatible with Cloudflare Workers runtime
+# due to Node.js-specific APIs (http.createServer, express, ws, etc.).
 
-[build.upload]
-format = "service-worker"
-
-# Environment variables (configure these in Cloudflare dashboard)
-# [env.production]
-# vars = { }
+# Environment variables (set in Cloudflare Pages dashboard)
+# NODE_VERSION = "22"

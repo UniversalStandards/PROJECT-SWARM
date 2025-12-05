@@ -8,7 +8,6 @@ import type { Request } from "express";
 import { workflowValidator, workflowExportSchema } from "./lib/workflow-validator";
 import { webhookHandler } from "./webhooks";
 import crypto from "crypto";
-import crypto from "crypto";
 import { 
   getGitHubAuthUrl, 
   exchangeCodeForToken, 
@@ -19,7 +18,6 @@ import {
 } from "./auth/github-oauth";
 import { withGitHubAuth, type GitHubAuthRequest } from "./middleware/github-auth";
 import { encrypt, decrypt, maskToken } from "./auth/encryption";
-import { workflowValidator } from "./lib/workflow-validator";
 import { WorkflowValidationError } from "@shared/errors";
 
 // Execution request schema - only workflowId and input are needed from client
