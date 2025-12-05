@@ -35,7 +35,7 @@ The merge was clean because:
 ### Verification Steps Performed
 
 ✅ Checked for unmerged files: None found
-✅ Searched for conflict markers in codebase: None found  
+✅ Searched for conflict markers in codebase: None found
 ✅ Verified working tree status: Clean
 ✅ Compared file differences: No conflicts
 
@@ -118,7 +118,7 @@ The only remaining step is to push the merged `main` branch to `origin/main`, wh
 
 ---
 
-*Generated*: 2025-12-05  
+*Generated on*: 2025-12-05  
 *Branch*: copilot/resolve-merge-conflicts  
 *Merge Type*: Fast-forward  
 *Outcome*: Success
